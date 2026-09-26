@@ -17,6 +17,7 @@ from harle_infrastructure.google_sheets import (
     GoogleSheetsClientFactory,
     LegacyGoogleSheetsSettings,
 )
+from harle_infrastructure.mercado_pago import MercadoPagoClient
 from harle_infrastructure.postgres import (
     PostgresAccountRepository,
     PostgresAssistantProfileRepository,
@@ -27,6 +28,7 @@ from harle_infrastructure.postgres import (
     PostgresEventRepository,
     PostgresExpenseRepository,
     PostgresInteractionEventRepository,
+    PostgresPaymentSubscriptionRepository,
     PostgresTelegramLinkRepository,
     PostgresTelegramUpdateRepository,
     PostgresUserProfileRepository,
@@ -39,7 +41,9 @@ from harle_services.access import PreflightService
 from harle_services.accounts import (
     FreeSubscriptionService,
     GoogleAuthService,
+    PaidSubscriptionService,
     SessionService,
+    SubscriptionMaintenanceService,
     TelegramLinkCommandService,
     TelegramLinkService,
     WebAccountService,
@@ -76,7 +80,8 @@ class AccountRuntime:
     accounts: WebAccountService
     telegram_links: TelegramLinkService
     telegram_link_commands: TelegramLinkCommandService
-    free_subscriptions: FreeSubscriptionService
+    paid_subscriptions: PaidSubscriptionService
+    subscriptions: SubscriptionMaintenanceService
 
 
 @dataclass(frozen=True, slots=True)
@@ -136,6 +141,9 @@ class AccountRuntimeConfig:
     google_oauth_client_secret: str
     google_oauth_redirect_uri: str
     session_signing_secret: str
+    mercado_pago_access_token: str
+    mercado_pago_webhook_secret: str
+    payment_checkout_return_url: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -267,7 +275,7 @@ def _build_process_runtime(
     )
     interaction_service = InteractionEventService(
         PostgresInteractionEventRepository(pool),
-        free_subscriptions=account_access.account.free_subscriptions,
+        subscriptions=account_access.account.subscriptions,
     )
     tools = create_tools_injector(
         legacy_settings,
@@ -334,10 +342,24 @@ def _create_account_access_runtime(
 ) -> _AccountAccessRuntime:
     accounts = PostgresWebAccountRepository(pool)
     free_subscriptions = FreeSubscriptionService(accounts)
+    payment_repository = PostgresPaymentSubscriptionRepository(pool)
+    paid_subscriptions = PaidSubscriptionService(
+        repository=payment_repository,
+        accounts=accounts,
+        provider=MercadoPagoClient(
+            access_token=config.mercado_pago_access_token,
+            webhook_secret=config.mercado_pago_webhook_secret,
+        ),
+        checkout_return_url=config.payment_checkout_return_url,
+    )
+    subscriptions = SubscriptionMaintenanceService(
+        free=free_subscriptions,
+        paid=paid_subscriptions,
+    )
     preflight = PreflightService(
         accounts=PostgresAccountRepository(pool),
         conversations=conversations,
-        free_subscriptions=free_subscriptions,
+        subscriptions=subscriptions,
     )
     sessions = SessionService(
         PostgresBrowserSessionRepository(pool),
@@ -364,7 +386,7 @@ def _create_account_access_runtime(
             accounts=accounts,
             sessions=sessions,
             telegram_links=link_repository,
-            free_subscriptions=free_subscriptions,
+            subscriptions=subscriptions,
         ),
         telegram_links=links,
         telegram_link_commands=TelegramLinkCommandService(
@@ -373,7 +395,8 @@ def _create_account_access_runtime(
             messenger=messenger,
             rate_limiter=preflight.check_rate_limit,
         ),
-        free_subscriptions=free_subscriptions,
+        paid_subscriptions=paid_subscriptions,
+        subscriptions=subscriptions,
     )
     return _AccountAccessRuntime(account=account, preflight=preflight)
 

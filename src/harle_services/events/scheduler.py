@@ -86,7 +86,7 @@ class AgentsScheduler:
                         delivered_count += 1
                 except SCHEDULER_FAILURES as exc:
                     log.warning(
-                        f"Event notification failed for event_id={event.id}: {type(exc).__name__}"
+                        f"Event notification failed for event_id={event.id}: {type(exc).__name__}",
                     )
             interaction_candidates = await self.interactions.list_active()
             scheduler_interval = timedelta(seconds=self.interval_seconds)

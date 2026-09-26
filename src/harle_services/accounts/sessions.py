@@ -29,7 +29,7 @@ class SessionService:
     def __post_init__(self) -> None:
         if len(self.signing_secret) < 32:
             raise ValueError(
-                "Session signing secret must contain at least 32 characters."
+                "Session signing secret must contain at least 32 characters.",
             )
         if self.lifetime <= timedelta(0):
             raise ValueError("Session lifetime must be positive.")

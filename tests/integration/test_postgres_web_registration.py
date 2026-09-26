@@ -44,6 +44,7 @@ SCHEMA_PATHS = (
     ROOT / "scripts" / "apply_telegram_dedup_ordering.sql",
     ROOT / "scripts" / "apply_bans_quotas.sql",
     ROOT / "scripts" / "apply_web_registration.sql",
+    ROOT / "scripts" / "apply_paid_subscriptions.sql",
 )
 
 
@@ -68,6 +69,7 @@ async def _create_google_user(
             identity=GoogleIdentity(
                 subject=f"google-{uuid4()}",
                 display_name=display_name,
+                email=f"{uuid4()}@example.com",
                 email_verified=True,
             ),
             locale="es-AR",
@@ -117,6 +119,7 @@ async def verify_web_registration(database_url: str) -> None:
             identity=GoogleIdentity(
                 subject=f"google-{uuid4()}",
                 display_name="Web User",
+                email=f"{uuid4()}@example.com",
                 email_verified=True,
             ),
             locale="es-AR",

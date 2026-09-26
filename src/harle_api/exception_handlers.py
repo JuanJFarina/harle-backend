@@ -12,7 +12,10 @@ from harle_utils import (
     AuthenticationRequiredError,
     InvalidCsrfError,
     InvalidOAuthError,
+    InvalidPaymentWebhookError,
     OAuthProviderError,
+    PaymentProviderError,
+    SubscriptionConflictError,
     TelegramAlreadyLinkedError,
     log,
 )
@@ -101,6 +104,45 @@ async def telegram_already_linked_handler(
     )
 
 
+async def subscription_conflict_handler(
+    request: Request,
+    error: Exception,
+) -> JSONResponse:
+    del error
+    return _web_error(
+        request,
+        409,
+        "subscription_conflict",
+        "The subscription cannot be changed in its current state.",
+    )
+
+
+async def invalid_payment_webhook_handler(
+    request: Request,
+    error: Exception,
+) -> JSONResponse:
+    del error
+    return _web_error(
+        request,
+        401,
+        "invalid_payment_webhook",
+        "The payment notification could not be verified.",
+    )
+
+
+async def payment_provider_handler(
+    request: Request,
+    error: Exception,
+) -> JSONResponse:
+    del error
+    return _web_error(
+        request,
+        502,
+        "payment_provider_unavailable",
+        "The payment provider is temporarily unavailable.",
+    )
+
+
 async def request_validation_handler(
     request: Request,
     error: Exception,
@@ -176,6 +218,15 @@ def register_exception_handlers(app: FastAPI) -> None:
         TelegramAlreadyLinkedError,
         telegram_already_linked_handler,
     )
+    app.add_exception_handler(
+        SubscriptionConflictError,
+        subscription_conflict_handler,
+    )
+    app.add_exception_handler(
+        InvalidPaymentWebhookError,
+        invalid_payment_webhook_handler,
+    )
+    app.add_exception_handler(PaymentProviderError, payment_provider_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
     app.add_exception_handler(Exception, unexpected_error_handler)
 

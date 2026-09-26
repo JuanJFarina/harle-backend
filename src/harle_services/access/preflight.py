@@ -13,7 +13,7 @@ from harle_domain.accounts import (
     SubscriptionStatus,
 )
 from harle_domain.conversations.ports import ConversationUsageRepository
-from harle_services.accounts import FreeSubscriptionService
+from harle_services.accounts import SubscriptionMaintenanceService
 from harle_utils import (
     Clock,
     InactiveSubscriptionError,
@@ -67,12 +67,12 @@ class PreflightService:
         self,
         accounts: AccountRepository,
         conversations: ConversationUsageRepository,
-        free_subscriptions: FreeSubscriptionService | None = None,
+        subscriptions: SubscriptionMaintenanceService | None = None,
         clock: Clock = utc_now,
     ) -> None:
         self._accounts = accounts
         self._conversations = conversations
-        self._free_subscriptions = free_subscriptions
+        self._subscriptions = subscriptions
         self._clock = clock
         self._rate_limits: MutableMapping[int, _IdentityRateLimit] = {}
         self._quota_locks: MutableMapping[UUID, Lock] = {}
@@ -84,7 +84,7 @@ class PreflightService:
         )
         if resolved_user is None:
             raise UnknownIdentityError
-        resolved_user = await self._renew_free_subscription(resolved_user)
+        resolved_user = await self._maintain_subscription(resolved_user)
 
         _require_active_subscription(resolved_user, as_utc(self._clock()))
         quota = await self._reserve_quota(
@@ -105,7 +105,7 @@ class PreflightService:
         )
         if resolved_user is None:
             raise UnknownIdentityError
-        resolved_user = await self._renew_free_subscription(resolved_user)
+        resolved_user = await self._maintain_subscription(resolved_user)
         _require_active_subscription(resolved_user, as_utc(self._clock()))
         return resolved_user
 
@@ -192,13 +192,13 @@ class PreflightService:
     def _quota_lock(self, user_id: UUID) -> Lock:
         return self._quota_locks.setdefault(user_id, Lock())
 
-    async def _renew_free_subscription(
+    async def _maintain_subscription(
         self,
         resolved_user: ResolvedUser,
     ) -> ResolvedUser:
-        if self._free_subscriptions is None:
+        if self._subscriptions is None:
             return resolved_user
-        should_reload = await self._free_subscriptions.ensure_current(
+        should_reload = await self._subscriptions.ensure_current(
             resolved_user.user,
         )
         if not should_reload:

@@ -97,6 +97,9 @@ class GoogleOAuthClient:
         display_name = typed_claims.get("name")
         if not isinstance(display_name, str) or not display_name.strip():
             display_name = "Harle user"
+        email = typed_claims.get("email")
+        if not isinstance(email, str) or not email.strip():
+            raise InvalidOAuthError
         email_verified = typed_claims.get("email_verified")
         verified = email_verified is True or email_verified == "true"
         if not verified:
@@ -104,5 +107,6 @@ class GoogleOAuthClient:
         return GoogleIdentity(
             subject=subject,
             display_name=display_name.strip(),
+            email=email.strip().lower(),
             email_verified=True,
         )

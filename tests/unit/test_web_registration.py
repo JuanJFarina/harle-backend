@@ -68,7 +68,12 @@ class FakeGoogleProvider:
         assert code == "authorization-code"
         assert code_verifier
         assert expected_nonce == self.nonce
-        return GoogleIdentity("google-subject", "New User", True)
+        return GoogleIdentity(
+            "google-subject",
+            "New User",
+            "user@example.com",
+            True,
+        )
 
 
 class FakeWebAccounts:

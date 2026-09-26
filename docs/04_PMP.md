@@ -62,25 +62,30 @@ Exit criteria:
 - Free, basic, and max users are limited to 15, 60, and 240 successful event notifications per synchronized subscription period without consuming conversation quota.
 - Quota admission happens before Gemini, failed attempts consume nothing, delivered occurrences count once, and the user receives at most one non-Gemini exhaustion notice per synchronized subscription period.
 
-### 2. Free Web Registration and Telegram Linking
+### 2. Web Registration, Telegram Linking, and Paid Beta
 
 Goals:
 
-- Implement the unversioned `/api` contract documented in the SRS for Google identity, sessions, free-account state, and Telegram linking.
+- Implement the unversioned `/api` contract documented in the SRS for Google identity, sessions, account state, Telegram linking, public plans, and paid subscriptions.
 - Add Google OpenID Connect, revocable secure-cookie sessions, CSRF protection, explicit CORS origins, and endpoint-specific abuse controls.
 - Provision complete active free accounts with required profiles and automatically renewable exact monthly allowance periods.
 - Add short-lived, single-use Telegram account linking through the existing bot webhook.
+- Add Mercado Pago hosted checkout for Básico and Max without storing card data.
+- Authenticate and claim provider webhooks before reading and reconciling subscription or authorized-payment resources.
+- Suspend rejected paid accounts immediately, recover them after an approved retry, and downgrade cancelled accounts to Gratuito only after the paid period ends.
 - Keep browser identity and linking services separate from agent, tool, conversation, and model code.
 - Continue using one ordered idempotent schema script for this focused release; checksummed migration infrastructure remains broad-launch work.
 
 Exit criteria:
 
-- `harle-frontend` can complete Google registration, inspect the session, create a Telegram deep link, and observe successful linking through `/api` without direct database access.
+- `harle-frontend` can complete Google registration, inspect the session, create a Telegram deep link, observe successful linking, list plans, start checkout, inspect subscription state, and cancel through `/api` without direct database access.
 - Sessions are revocable, browser writes are CSRF-protected, Google OAuth state, nonce, PKCE, issuer, and audience are verified, and ownership never comes from a client-supplied user UUID.
 - First login creates one complete free account; later logins by the same Google subject reuse it.
 - Active free periods advance automatically before conversation and scheduled access while preserving monthly boundaries.
 - One Telegram identity cannot be linked to two users, and expired or replayed link tokens cannot attach an identity.
 - Link commands never invoke Gemini, and ordinary linked messages continue through the existing agent admission path.
+- Browser returns never activate paid access; duplicate or out-of-order Mercado Pago events create no duplicate effects.
+- Approved payments activate exact paid periods, rejected payments suspend admission, cancellation preserves already-paid access, and period expiry returns the account to Gratuito.
 
 ### 3. Privacy and Operations
 

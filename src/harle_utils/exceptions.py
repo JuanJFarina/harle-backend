@@ -52,3 +52,19 @@ class OAuthProviderError(RuntimeError):
 
 class TelegramAlreadyLinkedError(AccessDeniedError):
     pass
+
+
+class SubscriptionConflictError(AccessDeniedError):
+    pass
+
+
+class InvalidPaymentWebhookError(AccessDeniedError):
+    pass
+
+
+class PaymentProviderError(RuntimeError):
+    pass
+
+
+class PaymentProviderRejectedError(PaymentProviderError):
+    pass

@@ -11,7 +11,7 @@ from harle_domain.events import (
     InteractionEventCandidate,
     InteractionEventRepository,
 )
-from harle_services.accounts import FreeSubscriptionService
+from harle_services.accounts import SubscriptionMaintenanceService
 from harle_utils import Clock, as_utc, utc_now
 
 MAX_USER_INACTIVITY = timedelta(days=7)
@@ -23,7 +23,7 @@ class InteractionEventService:
     repository: InteractionEventRepository
     clock: Clock = utc_now
     random_value: Callable[[], float] = random
-    free_subscriptions: FreeSubscriptionService | None = None
+    subscriptions: SubscriptionMaintenanceService | None = None
 
     async def get(self, *, user_id: UUID) -> InteractionEvent | None:
         return await self.repository.get_for_user(user_id=user_id)
@@ -33,8 +33,8 @@ class InteractionEventService:
         *,
         limit: int = DEFAULT_INTERACTION_EVENT_LIMIT,
     ) -> Sequence[InteractionEventCandidate]:
-        if self.free_subscriptions is not None:
-            await self.free_subscriptions.renew_due()
+        if self.subscriptions is not None:
+            await self.subscriptions.renew_due()
         current_time = self._now()
         return await self.repository.list_active(
             limit=limit,

@@ -43,6 +43,7 @@ erDiagram
         TEXT provider
         TEXT external_user_id
         TEXT display_name
+        TEXT email
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -305,6 +306,65 @@ erDiagram
 - First Google login creates a complete active free user, both required profiles, and exact allowance boundaries. The existing user-insert trigger creates the interaction event.
 - Free renewal advances both exact period boundaries by calendar months before conversation or scheduled access while preserving prior boundaries.
 
+## Current Paid Subscription Beta Extension
+
+```mermaid
+erDiagram
+    PLAN ||--o{ PAYMENT_SUBSCRIPTION : selected_for
+    HARLE_USER ||--o{ PAYMENT_SUBSCRIPTION : owns
+    PAYMENT_SUBSCRIPTION ||--o{ SUBSCRIPTION_PAYMENT : produces
+
+    PAYMENT_SUBSCRIPTION {
+        UUID id PK
+        UUID user_id FK
+        TEXT plan_code FK
+        TEXT provider
+        TEXT provider_subscription_id UK
+        TIMESTAMPTZ provider_updated_at
+        TEXT payer_email
+        TEXT status
+        TEXT provider_status
+        TEXT checkout_url
+        TIMESTAMPTZ period_starts_at
+        TIMESTAMPTZ period_ends_at
+        TIMESTAMPTZ next_payment_at
+        TIMESTAMPTZ latest_payment_updated_at
+        BOOLEAN cancel_at_period_end
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    SUBSCRIPTION_PAYMENT {
+        UUID id PK
+        UUID subscription_id FK
+        TEXT provider_invoice_id UK
+        TEXT provider_payment_id
+        TEXT status
+        NUMERIC amount
+        CHAR currency
+        TIMESTAMPTZ debit_at
+        TIMESTAMPTZ updated_at
+    }
+
+    PAYMENT_WEBHOOK_CLAIM {
+        TEXT provider_event_id PK
+        TEXT provider_request_id
+        TEXT topic
+        TEXT resource_id
+        TEXT status
+        TIMESTAMPTZ received_at
+        TIMESTAMPTZ processed_at
+    }
+```
+
+- `PLAN` gains public display name, monthly ARS price, currency, and billing interval fields and remains the source of allowance limits.
+- A user may have historical subscriptions but at most one open creating, pending, active, or past-due subscription.
+- The internal subscription UUID is sent to Mercado Pago as `external_reference`; browser state never selects the owning user during reconciliation.
+- A signed webhook claim is persisted before provider reads. Reconciliation remains idempotent even when Mercado Pago retries or sends state out of order.
+- Approved authorized payments define paid access periods. Rejected payments set the subscription and account to past due.
+- Cancelling sets the provider subscription to its irreversible cancelled state, retains local access through the current paid period, and then returns the user to a new free period.
+- Existing manually provisioned paid accounts have no `PAYMENT_SUBSCRIPTION` row and remain unchanged until explicitly migrated.
+
 ## Out Of Scope For This ERD
 
 - Proposed actions and action audits
@@ -312,5 +372,4 @@ erDiagram
 - Ordinary-event notification preferences and durable scheduler queues or outbox records
 - OAuth credentials and multi-user Google integrations
 - Email/password credentials and verification or recovery tokens
-- Paid-plan catalog metadata, payment subscriptions, and payment webhook claims
 - Browser-local UI state and frontend analytics

@@ -39,7 +39,8 @@ This document distinguishes the implemented controlled-beta baseline from target
 - Manually provisioned exact subscription-period boundaries define conversation and event-notification allowances. Completed conversations and successful ordinary event deliveries use separate configured plan limits with process-local in-flight reservations.
 - The unversioned `/api` surface provides Google registration, revocable browser sessions, renewable free-account periods, safe session state, and short-lived Telegram deep links.
 - Telegram link commands are deduplicated and consumed before ordinary admission without invoking Gemini. Linked identities then use the existing agent path.
-- Runtime authorization for inferred writes, action audits, durable work queues, paid subscriptions, email/password authentication, broader web management, privacy workflows, and multi-user Google integrations remain pending.
+- The web API provides a public plan catalog and Mercado Pago hosted checkout, signed webhook reconciliation, paid-period activation, rejected-payment suspension, state inspection, and period-end cancellation.
+- Runtime authorization for inferred writes, action audits, durable work queues, email/password authentication, broader web management, privacy workflows, and multi-user Google integrations remain pending.
 
 ## User Requirements
 
@@ -224,7 +225,7 @@ This document distinguishes the implemented controlled-beta baseline from target
 
 ### Web API Contract
 
-The endpoint catalog in this section is the backend source of truth for `harle-frontend`. The first web release supports Google registration, renewable free accounts, sessions, and Telegram linking. Email/password authentication, paid subscriptions, account management, expense and event management, export, and deletion remain later work.
+The endpoint catalog in this section is the backend source of truth for `harle-frontend`. The beta web release supports Google registration, renewable free accounts, sessions, Telegram linking, public plans, and paid Mercado Pago subscriptions. Email/password authentication, broader account management, expense and event management, export, and deletion remain later work.
 
 #### Conventions and authorization
 
@@ -259,9 +260,22 @@ The endpoint catalog in this section is the backend source of truth for `harle-f
 - **FR-143**: A user shall own at most one Telegram identity, and a Telegram identity shall belong to at most one user. Linking shall not silently move an existing identity.
 - **FR-144**: Link tokens and provider identifiers shall not appear in application logs or frontend-visible account payloads.
 
-#### Deferred web capabilities
+#### Paid subscription beta
 
-- **FR-145**: Email/password authentication, password recovery, public paid-plan discovery, Mercado Pago subscriptions, account/profile mutation, expense management, event management, export, deletion, and Telegram unlinking remain later capabilities requiring separate product approval.
+- **FR-145**: Google identities shall persist the provider-verified email required to create a Mercado Pago subscription without using email as an account-merging key.
+- **FR-146**: `GET /api/plans` shall return active Gratuito, Básico, and Max product contracts. Básico and Max cost ARS 5,000 and ARS 15,000 per month and include the configured conversation and event-notification limits.
+- **FR-147**: `POST /api/subscription/checkout` shall accept only `basic` or `max`, require an authenticated session and CSRF proof, create one pending Mercado Pago preapproval with the user's verified email and an opaque internal external reference, and return its hosted checkout URL.
+- **FR-148**: Checkout creation shall be idempotent. A retry shall return or reconcile the existing open checkout instead of creating a second provider subscription.
+- **FR-149**: A browser return from Mercado Pago shall never activate paid access. Only an authenticated provider webhook followed by a provider resource read may change subscription or payment state.
+- **FR-150**: `POST /api/payments/mercado-pago/webhook` shall validate `x-signature`, claim the provider request idempotently, fetch the referenced preapproval or authorized payment from Mercado Pago, and reconcile it before returning success.
+- **FR-151**: An approved authorized payment shall activate the selected paid plan and synchronize exact period boundaries. A rejected payment shall immediately set the account to `past_due`; a later approved retry shall restore active access.
+- **FR-152**: Provider subscription, invoice, and payment identifiers shall be unique. Duplicate or out-of-order webhooks shall produce no duplicate period, payment, or plan effects.
+- **FR-153**: `GET /api/subscription` shall return the authenticated user's current plan, local and provider status, exact period, renewal information, pending checkout state, and allowed actions without exposing provider secrets.
+- **FR-154**: `POST /api/subscription/cancel` shall irreversibly cancel the provider preapproval, stop future billing, and preserve paid access until the already-paid period ends.
+- **FR-155**: At the end of a cancelled paid period, access maintenance shall atomically return the user to an active free plan with a new monthly free period.
+- **FR-156**: Direct paid-to-paid changes, proration, automatic refunds, trials, and provider migration remain out of scope for the beta. A user must cancel and wait for the paid period to end before subscribing to another paid plan.
+- **FR-157**: Existing manually provisioned paid users shall remain outside Mercado Pago management until each account is migrated explicitly.
+- **FR-158**: Email/password authentication, password recovery, account/profile mutation, expense management, event management, export, deletion, and Telegram unlinking remain later capabilities.
 
 ### Nonfunctional Requirements
 
@@ -292,7 +306,7 @@ Harle is conceptually divided into these program areas:
 - **Web API interface**: Exposes the unversioned authenticated JSON contract used by `harle-frontend`, performs payload validation, and delegates every business operation to services.
 - **CLI interface**: Provides a local entry point for direct prompts while reusing the same assistant engine, stores, tools, and model configuration.
 - **Identity and session services**: Integrate Google OAuth, create and revoke browser sessions, provision free accounts, and enforce web abuse controls.
-- **Free subscription service**: Activates and renews exact free-plan allowance periods independently from agent reasoning.
+- **Subscription services**: Activate and renew free periods, create hosted Mercado Pago checkouts, reconcile signed provider events, synchronize paid periods, suspend rejected payments, and expire cancelled subscriptions.
 - **Telegram-linking service**: Issues one-time account-bound link tokens and completes identity attachment only after proof arrives through the Telegram bot.
 - **Assistant engine**: Builds user-scoped context, calls the model, parses structured output, executes available tools, caps tool loops, and returns final text.
 - **Message coordinator**: Deduplicates Telegram updates, aggregates safe consecutive messages, and serializes conflicting work per identity.
@@ -304,7 +318,7 @@ Harle is conceptually divided into these program areas:
 - **Event scheduler**: Processes ordinary due events every five minutes, then independently evaluates interaction events for users without ordinary due work, wakes the owning active user's agent, sends Telegram messages, and records successful delivery.
 - **Event-notification quota service**: Resolves plan allowance for the user's synchronized subscription period, reserves capacity before ordinary event generation, records successful occurrence deliveries, and suppresses repeated quota notices.
 - **Future runtime services**: Proposed-action, audit, durable delivery, privacy, and Google import services remain pending.
-- **External integrations**: Connects to AI providers, Telegram, PostgreSQL, Google OAuth, Google Sheets, future productivity services, and weather data.
+- **External integrations**: Connects to AI providers, Telegram, PostgreSQL, Google OAuth, Mercado Pago, Google Sheets, future productivity services, and weather data.
 
 The implemented controlled-beta message flow is:
 
@@ -394,6 +408,7 @@ Runtime dependencies include:
 - **Open-Meteo** for current weather context.
 - **Future productivity providers** for reminders or calendar data.
 - **Google OAuth** for Google account sign-in.
+- **Mercado Pago Subscriptions API** for hosted recurring ARS checkout, provider state, authorized payments, cancellation, and signed webhooks.
 
 Production deployment shall provide:
 
@@ -404,13 +419,13 @@ Production deployment shall provide:
 - Connection pooling appropriate for expected user count.
 - Monitoring for request failures, provider failures, latency, token usage, and tool execution failures.
 - Monitoring for duplicate prevention, scheduler and notification failures, notification-quota admission and accounting, and future queue failures.
-- Monitoring for Google authentication, session abuse, free-period renewal, Telegram linking, and browser API endpoints.
+- Monitoring for Google authentication, session abuse, subscription reconciliation, Mercado Pago webhook failures, free-period renewal, Telegram linking, and browser API endpoints.
 - Enforcement of the controlled beta's single-process deployment boundary until distributed coordination exists.
 
 Open requirements that need product discovery:
 
 - Exact privacy and legal requirements for storing conversations, profiles, personal history, and finance data.
-- Free trials, allowance carry-over, plan changes, taxes, refunds, failed-payment grace, and cancellation timing.
+- Taxes, receipts, refunds, allowance carry-over, future plan changes, and migration of manually provisioned paid accounts.
 - Session lifetime and safe future account-linking behavior.
 - Telegram authorization UX for approving, cancelling, and expiring proposed modifications.
 - Final Telegram web-link lifetime, relinking policy, and recovery behavior.

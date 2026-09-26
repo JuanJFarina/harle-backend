@@ -9,7 +9,12 @@ from harle_api.exception_handlers import (
     register_exception_handlers,
     register_request_id_middleware,
 )
-from harle_api.routes import browser_router, health_router, telegram_router
+from harle_api.routes import (
+    browser_router,
+    health_router,
+    payments_router,
+    telegram_router,
+)
 from harle_api.routes.health import get_healthcheck
 from harle_api.routes.telegram import post_telegram_webhook
 from harle_api.runtime import close_runtime, create_runtime
@@ -47,6 +52,7 @@ harle_app.add_middleware(
 register_request_id_middleware(harle_app)
 harle_app.include_router(health_router)
 harle_app.include_router(telegram_router)
+harle_app.include_router(payments_router)
 harle_app.include_router(browser_router)
 
 __all__ = [

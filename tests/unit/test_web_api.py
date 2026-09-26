@@ -49,6 +49,9 @@ def _settings(
         SESSION_COOKIE_SECURE=secure,
         SESSION_COOKIE_SAMESITE=cast(object, same_site),
         TELEGRAM_BOT_USERNAME="harle_bot",
+        MERCADO_PAGO_ACCESS_TOKEN="payment-token",
+        MERCADO_PAGO_WEBHOOK_SECRET="payment-webhook-secret",
+        PAYMENT_CHECKOUT_RETURN_URL="https://app.test/suscripcion",
     )
 
 

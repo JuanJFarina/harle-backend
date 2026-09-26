@@ -47,7 +47,7 @@ class GoogleAuthService:
     def __post_init__(self) -> None:
         if len(self.signing_secret) < 32:
             raise ValueError(
-                "OAuth signing secret must contain at least 32 characters."
+                "OAuth signing secret must contain at least 32 characters.",
             )
         if self.state_lifetime <= timedelta(0):
             raise ValueError("OAuth state lifetime must be positive.")
@@ -87,7 +87,8 @@ class GoogleAuthService:
         attempt = _decode_attempt(state_cookie, self.signing_secret)
         current_time = as_utc(self.clock())
         if attempt.expires_at <= current_time or not compare_digest(
-            attempt.state, state
+            attempt.state,
+            state,
         ):
             raise InvalidOAuthError
         identity = await self.provider.exchange(

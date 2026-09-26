@@ -25,6 +25,9 @@ class ApiSettings(Settings):
     SESSION_COOKIE_SAMESITE: Literal["lax", "strict", "none"] = "lax"
     OAUTH_STATE_COOKIE_NAME: str = "harle_oauth_state"
     TELEGRAM_BOT_USERNAME: str
+    MERCADO_PAGO_ACCESS_TOKEN: str
+    MERCADO_PAGO_WEBHOOK_SECRET: str
+    PAYMENT_CHECKOUT_RETURN_URL: str
 
     @model_validator(mode="after")
     def validate_session_cookie(self) -> "ApiSettings":

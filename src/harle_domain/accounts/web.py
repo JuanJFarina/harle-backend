@@ -3,13 +3,14 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from .models import SubscriptionPeriod
+from .models import SubscriptionPeriod, SubscriptionStatus
 
 
 @dataclass(frozen=True, slots=True)
 class GoogleIdentity:
     subject: str
     display_name: str
+    email: str
     email_verified: bool
 
     def __post_init__(self) -> None:
@@ -17,8 +18,12 @@ class GoogleIdentity:
             raise ValueError("Google subject cannot be empty.")
         if not self.display_name.strip():
             raise ValueError("Google display name cannot be empty.")
+        normalized_email = self.email.strip().lower()
+        if "@" not in normalized_email:
+            raise ValueError("Google email is invalid.")
         if not self.email_verified:
             raise ValueError("Google email must be verified.")
+        object.__setattr__(self, "email", normalized_email)
 
 
 @dataclass(frozen=True, slots=True)
@@ -41,6 +46,7 @@ class AccountOverview:
     user_id: UUID
     display_name: str
     plan_code: str
+    subscription_status: SubscriptionStatus
     subscription_period: SubscriptionPeriod
     telegram_linked: bool
 

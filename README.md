@@ -141,10 +141,20 @@ Environment variables:
 GEMINI_API_KEY=your_api_key_here
 GEMINI_MODEL=gemini-2.5-flash
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token_here
+TELEGRAM_BOT_USERNAME=your_bot_username_without_at
 TELEGRAM_WEBHOOK_SECRET=your_random_webhook_secret_here
 POSTGRES_DATABASE_URL=postgresql://user:password@host:5432/database?sslmode=require
 POSTGRES_POOL_MIN_SIZE=1
 POSTGRES_POOL_MAX_SIZE=5
+GOOGLE_OAUTH_CLIENT_ID=your_google_oauth_client_id
+GOOGLE_OAUTH_CLIENT_SECRET=your_google_oauth_client_secret
+GOOGLE_OAUTH_REDIRECT_URI=https://app.example.com/api/auth/google/callback
+FRONTEND_REDIRECT_URL=https://app.example.com/registro
+FRONTEND_ORIGINS=["https://app.example.com"]
+SESSION_SIGNING_SECRET=replace_with_at_least_32_random_characters
+MERCADO_PAGO_ACCESS_TOKEN=your_mercado_pago_access_token
+MERCADO_PAGO_WEBHOOK_SECRET=your_mercado_pago_webhook_secret
+PAYMENT_CHECKOUT_RETURN_URL=https://app.example.com/suscripcion
 LEGACY_GOOGLE_SHEETS_USER_ID=juan_internal_user_uuid_here
 EXPENSES_SPREADSHEET_ID=your_expenses_spreadsheet_id_here
 EXPENSES_NEXT_YEAR_SPREADSHEET_ID=your_next_year_expenses_spreadsheet_id_here
@@ -155,10 +165,15 @@ Before deployment, apply every commercial schema script in order:
 
 ```powershell
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_multi_user_runtime.sql
+psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_subscription_interactions.sql
+psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_interaction_frequency.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_internal_expenses.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_internal_events.sql
+psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_event_notification_quotas.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_telegram_dedup_ordering.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_bans_quotas.sql
+psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_web_registration.sql
+psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_paid_subscriptions.sql
 ```
 
 Then provision every allowed beta user:

@@ -5,11 +5,24 @@ from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
 from harle_api.dependencies import get_account_runtime
-from harle_api.payloads import SessionPayload, TelegramLinkPayload
+from harle_api.payloads import (
+    CheckoutPayload,
+    CheckoutRequestPayload,
+    PlanPayload,
+    SessionPayload,
+    SubscriptionPayload,
+    TelegramLinkPayload,
+)
 from harle_api.settings import ApiSettings, get_settings
 from harle_utils import InvalidCsrfError
 
 router = APIRouter(prefix="/api")
+
+
+@router.get("/plans", response_model=list[PlanPayload])
+async def get_plans(request: Request) -> list[PlanPayload]:
+    plans = await get_account_runtime(request).paid_subscriptions.list_plans()
+    return [PlanPayload.from_plan(plan) for plan in plans]
 
 
 @router.get("/auth/google/start")
@@ -59,7 +72,9 @@ async def get_google_auth_callback(
         max_age=max(
             0,
             int(
-                (issued.session.expires_at - datetime.now(timezone.utc)).total_seconds()
+                (
+                    issued.session.expires_at - datetime.now(timezone.utc)
+                ).total_seconds(),
             ),
         ),
         secure=settings.SESSION_COOKIE_SECURE,
@@ -145,6 +160,61 @@ async def post_telegram_link(
     )
     view = await account_runtime.telegram_links.issue(user_id=session.user_id)
     return TelegramLinkPayload.from_view(view)
+
+
+@router.get("/subscription", response_model=SubscriptionPayload)
+async def get_subscription(request: Request) -> SubscriptionPayload:
+    settings = get_settings()
+    account_runtime = get_account_runtime(request)
+    session = await account_runtime.sessions.resolve(
+        request.cookies.get(settings.SESSION_COOKIE_NAME),
+    )
+    overview = await account_runtime.paid_subscriptions.overview(
+        user_id=session.user_id,
+    )
+    return SubscriptionPayload.from_overview(overview)
+
+
+@router.post("/subscription/checkout", response_model=CheckoutPayload)
+async def post_subscription_checkout(
+    payload: CheckoutRequestPayload,
+    request: Request,
+    x_csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
+) -> CheckoutPayload:
+    settings = get_settings()
+    _require_frontend_origin(request, settings)
+    token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    account_runtime = get_account_runtime(request)
+    session = await account_runtime.sessions.resolve(token)
+    account_runtime.sessions.require_csrf(
+        session_token=token or "",
+        csrf_token=x_csrf_token,
+    )
+    checkout = await account_runtime.paid_subscriptions.checkout(
+        user_id=session.user_id,
+        plan_code=payload.plan_code,
+    )
+    return CheckoutPayload.from_checkout(checkout)
+
+
+@router.post("/subscription/cancel", response_model=SubscriptionPayload)
+async def post_subscription_cancel(
+    request: Request,
+    x_csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
+) -> SubscriptionPayload:
+    settings = get_settings()
+    _require_frontend_origin(request, settings)
+    token = request.cookies.get(settings.SESSION_COOKIE_NAME)
+    account_runtime = get_account_runtime(request)
+    session = await account_runtime.sessions.resolve(token)
+    account_runtime.sessions.require_csrf(
+        session_token=token or "",
+        csrf_token=x_csrf_token,
+    )
+    overview = await account_runtime.paid_subscriptions.cancel(
+        user_id=session.user_id,
+    )
+    return SubscriptionPayload.from_overview(overview)
 
 
 def _require_frontend_origin(request: Request, settings: ApiSettings) -> None:

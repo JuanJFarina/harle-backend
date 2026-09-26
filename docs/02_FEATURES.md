@@ -42,6 +42,11 @@
 - **Renewable free accounts**: First Google login creates a complete active free account, and its exact monthly allowance period renews automatically while the account remains active.
 - **Telegram account linking**: An authenticated web user can create a short-lived, single-use bot deep link that attaches a proven Telegram identity before agent admission.
 - **Web session state**: An authenticated user can inspect the current account, free-plan period, and Telegram-link state.
+- **Public plan catalog**: The web API exposes active Gratuito, Básico, and Max contracts with ARS prices and separate conversation and notification allowances.
+- **Mercado Pago checkout**: An authenticated free user can start one hosted Básico or Max recurring checkout without exposing card data to Harle.
+- **Signed subscription webhooks**: Provider notifications are signature-verified, claimed idempotently, and reconciled against Mercado Pago resources rather than trusted directly.
+- **Paid subscription lifecycle**: Approved recurring payments activate exact paid periods, rejected payments suspend access, and later approved retries recover it.
+- **Period-end cancellation**: Cancelling stops future provider charges, preserves already-paid access, and returns the account to Gratuito after period end.
 
 ## Pending Product MVP
 
@@ -68,8 +73,6 @@
 ## Possible Later Features
 
 - **Email and password authentication**: Users may register with a verified email and password, recover access, and safely link that credential to an existing account.
-- **Public paid-plan catalog**: The web API may expose Gratuito, Básico, and Max with approved ARS prices and separate conversation and notification allowances.
-- **Subscription checkout**: The backend may create and manage Mercado Pago subscriptions, process provider webhooks idempotently, and treat provider-confirmed state rather than browser redirects as authoritative.
 - **Account management API**: Authenticated users may inspect and update their user profile, assistant profile, proactive-interaction settings, current plan, subscription period, and usage.
 - **Expense management API**: Authenticated users may list, summarize, create, update, and permanently delete their own internal expenses through the same domain rules used by assistant tools.
 - **Event management API**: Authenticated users may list, create, update, disable, re-enable, and permanently delete their own `user_event` records through the same domain rules used by assistant tools.

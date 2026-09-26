@@ -11,6 +11,7 @@ from harle_domain.accounts import (
     FreeAccountPeriod,
     GoogleRegistration,
     SubscriptionPeriod,
+    SubscriptionStatus,
 )
 from harle_domain.profiles import AssistantProfile, UserProfile
 from harle_infrastructure.postgres.repositories.accounts import (
@@ -52,6 +53,20 @@ class PostgresWebAccountRepository:
                     identity.subject,
                 )
                 if isinstance(existing, UUID):
+                    await connection.execute(
+                        """
+                        UPDATE external_identities
+                        SET email = $2,
+                            display_name = $3,
+                            updated_at = $4
+                        WHERE provider = 'google'
+                            AND external_user_id = $1
+                        """,
+                        identity.subject,
+                        identity.email,
+                        identity.display_name,
+                        registration.created_at,
+                    )
                     return existing
                 user_id = await connection.fetchval(
                     """
@@ -91,6 +106,16 @@ class PostgresWebAccountRepository:
                         updated_at=registration.created_at,
                     ),
                 )
+                await connection.execute(
+                    """
+                    UPDATE external_identities
+                    SET email = $2
+                    WHERE provider = 'google'
+                        AND external_user_id = $1
+                    """,
+                    identity.subject,
+                    identity.email,
+                )
                 await save_user_profile(
                     connection,
                     UserProfile(
@@ -125,6 +150,7 @@ class PostgresWebAccountRepository:
                     users.id,
                     users.display_name,
                     users.plan_code,
+                    users.subscription_status,
                     users.subscription_period_starts_at,
                     users.subscription_period_ends_at,
                     EXISTS (
@@ -246,6 +272,9 @@ def _account_overview(row: asyncpg.Record) -> AccountOverview:
         user_id=_required(row, "id", UUID),
         display_name=_required(row, "display_name", str),
         plan_code=_required(row, "plan_code", str),
+        subscription_status=SubscriptionStatus(
+            _required(row, "subscription_status", str),
+        ),
         subscription_period=_subscription_period(row),
         telegram_linked=_required(row, "telegram_linked", bool),
     )
