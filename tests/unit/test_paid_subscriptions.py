@@ -246,6 +246,23 @@ def test_checkout_is_idempotent_for_one_open_subscription() -> None:
         assert first.url == second.url == "https://mercadopago.test/checkout"
         assert provider.created == 1
 
+        test_payments = FakePayments()
+        test_provider = FakeProvider(test_payments)
+        test_service = PaidSubscriptionService(
+            repository=cast(PaymentSubscriptionRepository, test_payments),
+            accounts=cast(WebAccountRepository, FakeAccounts()),
+            provider=cast(PaymentProvider, test_provider),
+            checkout_return_url="https://app.test/suscripcion",
+            testing=True,
+            test_payer_email="buyer@testuser.com",
+            clock=lambda: NOW,
+        )
+        test_checkout = await test_service.checkout(
+            user_id=USER_ID,
+            plan_code="basic",
+        )
+        assert test_checkout.subscription.payer_email == "buyer@testuser.com"
+
     asyncio.run(verify())
 
 

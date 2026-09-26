@@ -179,9 +179,7 @@ def _provider_authorized_payment(
 ) -> ProviderAuthorizedPayment:
     payment = payload.get("payment")
     typed_payment = (
-        cast(Mapping[str, object], payment)
-        if isinstance(payment, Mapping)
-        else {}
+        cast(Mapping[str, object], payment) if isinstance(payment, Mapping) else {}
     )
     raw_payment_id = typed_payment.get("id")
     payment_id = str(raw_payment_id) if raw_payment_id is not None else None

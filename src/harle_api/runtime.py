@@ -25,6 +25,8 @@ async def create_runtime(settings: ApiSettings) -> ApiRuntime:
                 session_signing_secret=settings.SESSION_SIGNING_SECRET,
                 mercado_pago_access_token=settings.MERCADO_PAGO_ACCESS_TOKEN,
                 mercado_pago_webhook_secret=settings.MERCADO_PAGO_WEBHOOK_SECRET,
+                mercado_pago_testing=settings.MERCADO_PAGO_TESTING,
+                mercado_pago_test_payer_email=(settings.MERCADO_PAGO_TEST_PAYER_EMAIL),
                 payment_checkout_return_url=settings.PAYMENT_CHECKOUT_RETURN_URL,
             ),
             scheduler_interval_seconds=settings.EVENT_SCHEDULER_INTERVAL_SECONDS,

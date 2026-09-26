@@ -27,12 +27,19 @@ class ApiSettings(Settings):
     TELEGRAM_BOT_USERNAME: str
     MERCADO_PAGO_ACCESS_TOKEN: str
     MERCADO_PAGO_WEBHOOK_SECRET: str
+    MERCADO_PAGO_TESTING: bool = False
+    MERCADO_PAGO_TEST_PAYER_EMAIL: str = ""
     PAYMENT_CHECKOUT_RETURN_URL: str
 
     @model_validator(mode="after")
     def validate_session_cookie(self) -> "ApiSettings":
         if self.SESSION_COOKIE_SAMESITE == "none" and not self.SESSION_COOKIE_SECURE:
             raise ValueError("SameSite none requires a secure session cookie.")
+        test_email = self.MERCADO_PAGO_TEST_PAYER_EMAIL.strip().lower()
+        if self.MERCADO_PAGO_TESTING and not test_email.endswith("@testuser.com"):
+            raise ValueError(
+                "Mercado Pago testing requires a @testuser.com payer email.",
+            )
         return self
 
 

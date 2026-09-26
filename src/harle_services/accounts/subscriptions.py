@@ -33,6 +33,8 @@ class PaidSubscriptionService:
     accounts: WebAccountRepository
     provider: PaymentProvider
     checkout_return_url: str
+    testing: bool = False
+    test_payer_email: str = ""
     clock: Clock = utc_now
 
     async def list_plans(self) -> list[PublicPlan]:
@@ -55,9 +57,17 @@ class PaidSubscriptionService:
             raise SubscriptionConflictError
         if account.plan_code != "free" and existing is None:
             raise SubscriptionConflictError
-        email = await self.repository.get_verified_email(user_id=user_id)
+        email = (
+            self.test_payer_email.strip().lower()
+            if self.testing
+            else await self.repository.get_verified_email(user_id=user_id)
+        )
         if email is None:
             raise SubscriptionConflictError
+        if self.testing and not email.endswith("@testuser.com"):
+            raise ValueError(
+                "Mercado Pago testing requires a @testuser.com payer email.",
+            )
         current_time = self._now()
         subscription = await self.repository.begin_checkout(
             user_id=user_id,
@@ -99,14 +109,10 @@ class PaidSubscriptionService:
         if plan is None:
             raise RuntimeError("The account plan is unavailable.")
         pending_plan = None
-        if (
-            subscription is not None
-            and subscription.status
-            in {
-                PaymentSubscriptionStatus.CREATING,
-                PaymentSubscriptionStatus.PENDING,
-            }
-        ):
+        if subscription is not None and subscription.status in {
+            PaymentSubscriptionStatus.CREATING,
+            PaymentSubscriptionStatus.PENDING,
+        }:
             pending_plan = await self.repository.get_public_plan(
                 code=subscription.plan_code,
             )

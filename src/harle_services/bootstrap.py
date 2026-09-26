@@ -143,6 +143,8 @@ class AccountRuntimeConfig:
     session_signing_secret: str
     mercado_pago_access_token: str
     mercado_pago_webhook_secret: str
+    mercado_pago_testing: bool
+    mercado_pago_test_payer_email: str
     payment_checkout_return_url: str
 
 
@@ -351,6 +353,8 @@ def _create_account_access_runtime(
             webhook_secret=config.mercado_pago_webhook_secret,
         ),
         checkout_return_url=config.payment_checkout_return_url,
+        testing=config.mercado_pago_testing,
+        test_payer_email=config.mercado_pago_test_payer_email,
     )
     subscriptions = SubscriptionMaintenanceService(
         free=free_subscriptions,

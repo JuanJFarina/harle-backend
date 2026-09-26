@@ -35,6 +35,8 @@ def _settings(
     *,
     same_site: str = "lax",
     secure: bool = True,
+    payment_testing: bool = False,
+    test_payer_email: str = "",
 ) -> ApiSettings:
     return ApiSettings(
         TELEGRAM_BOT_TOKEN="telegram-token",
@@ -51,6 +53,8 @@ def _settings(
         TELEGRAM_BOT_USERNAME="harle_bot",
         MERCADO_PAGO_ACCESS_TOKEN="payment-token",
         MERCADO_PAGO_WEBHOOK_SECRET="payment-webhook-secret",
+        MERCADO_PAGO_TESTING=payment_testing,
+        MERCADO_PAGO_TEST_PAYER_EMAIL=test_payer_email,
         PAYMENT_CHECKOUT_RETURN_URL="https://app.test/suscripcion",
     )
 
@@ -64,6 +68,15 @@ def test_session_cookie_settings_validate_at_construction() -> None:
         _settings(same_site="unsupported")
     with pytest.raises(ValidationError):
         _settings(same_site="none", secure=False)
+    assert _settings(
+        payment_testing=True,
+        test_payer_email="buyer@testuser.com",
+    ).MERCADO_PAGO_TESTING
+    with pytest.raises(ValidationError):
+        _settings(
+            payment_testing=True,
+            test_payer_email="buyer@example.com",
+        )
 
 
 class FakeGoogleAuth:

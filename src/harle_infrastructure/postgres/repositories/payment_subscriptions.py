@@ -261,9 +261,7 @@ class PostgresPaymentSubscriptionRepository:
                 local_status = subscription.status.value
                 if provider.status == "cancelled":
                     local_status = (
-                        "ended"
-                        if subscription.period is None
-                        else "cancelled"
+                        "ended" if subscription.period is None else "cancelled"
                     )
                 elif provider.status == "paused":
                     local_status = "past_due"
@@ -379,9 +377,7 @@ class PostgresPaymentSubscriptionRepository:
                     if period is None:
                         raise ValueError("Approved payment requires a period.")
                     local_status = (
-                        "cancelled"
-                        if subscription.cancel_at_period_end
-                        else "active"
+                        "cancelled" if subscription.cancel_at_period_end else "active"
                     )
                     await connection.execute(
                         """
