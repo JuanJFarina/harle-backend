@@ -3,17 +3,16 @@ from argparse import ArgumentParser, Namespace
 from sys import stderr
 from uuid import UUID
 
-from harle_agent import __version__
 from harle_agent.agent import Harle
 from harle_agent.models import (
     HarlePersonalContext,
     HarleStores,
     default_harle_config,
 )
-from harle_agent.retry_decorator import ASSISTANT_FAILURES
 from harle_agent.stores import FileConversationStore
 from harle_domain.tools.models import HarleToolStore
 from harle_services.bootstrap import create_tools_injector
+from harle_utils import ASSISTANT_FAILURES
 
 CLI_PERSONAL_CONTEXT = HarlePersonalContext(
     user_name="CLI user",
@@ -75,7 +74,7 @@ def _parse_args() -> Namespace:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {__version__}",
+        version="%(prog)s 0.1.0",
     )
     parser.add_argument(
         "--user-id",

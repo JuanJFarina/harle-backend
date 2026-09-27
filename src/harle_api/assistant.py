@@ -4,7 +4,6 @@ from typing import cast
 
 from asyncpg import PostgresError
 
-from harle_agent.retry_decorator import ASSISTANT_FAILURES
 from harle_domain.messaging import (
     MediaContent,
     OutboundMessenger,
@@ -20,6 +19,7 @@ from harle_services.messaging import MessageTurn
 from harle_services.runtime import UserRuntime
 from harle_services.tools import ToolInjectionContext
 from harle_utils import (
+    PROCESSING_FAILURES,
     InactiveSubscriptionError,
     MediaDownloadError,
     MessageDeliveryError,
@@ -27,9 +27,6 @@ from harle_utils import (
     UnknownIdentityError,
     log,
 )
-
-PROCESSING_FAILURES = (*ASSISTANT_FAILURES, OSError, PostgresError)
-_GeneratedTurn = GeneratedResponse
 
 
 async def process_telegram_messages(

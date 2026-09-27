@@ -1,6 +1,8 @@
 from .base_settings import Settings
 from .clock import Clock, as_utc, utc_now
 from .exceptions import (
+    ASSISTANT_FAILURES,
+    PROCESSING_FAILURES,
     AccessDeniedError,
     AuthenticationRequiredError,
     InactiveSubscriptionError,
@@ -23,6 +25,8 @@ from .exceptions import (
 from .logging import log
 
 __all__ = [
+    "ASSISTANT_FAILURES",
+    "PROCESSING_FAILURES",
     "AccessDeniedError",
     "AuthenticationRequiredError",
     "Clock",

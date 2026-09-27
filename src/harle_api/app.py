@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from harle_agent import __version__
 from harle_api.exception_handlers import (
     register_exception_handlers,
     register_request_id_middleware,
@@ -35,7 +34,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 harle_app = FastAPI(
     title="Harle Backend",
     description="Telegram webhook for the Harle assistant.",
-    version=__version__,
+    version="0.1.0",
     lifespan=lifespan,
 )
 register_exception_handlers(harle_app)

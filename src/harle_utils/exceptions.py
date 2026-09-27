@@ -1,3 +1,8 @@
+from asyncpg import PostgresError
+from google.genai.errors import APIError, ClientError, ServerError
+from pydantic import ValidationError
+
+
 class AccessDeniedError(Exception):
     pass
 
@@ -68,3 +73,16 @@ class PaymentProviderError(RuntimeError):
 
 class PaymentProviderRejectedError(PaymentProviderError):
     pass
+
+
+ASSISTANT_FAILURES = (
+    APIError,
+    ClientError,
+    ServerError,
+    RuntimeError,
+    ToolAccessDeniedError,
+    ValueError,
+    ValidationError,
+)
+
+PROCESSING_FAILURES = (*ASSISTANT_FAILURES, OSError, PostgresError)

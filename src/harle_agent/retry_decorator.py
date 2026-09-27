@@ -3,25 +3,12 @@ from functools import wraps
 from time import time
 from typing import Any
 
-from google.genai.errors import APIError, ClientError, ServerError
-from pydantic import ValidationError
-
 from harle_domain.tools.models import ToolCall, ToolCallResult
-from harle_utils import ToolAccessDeniedError, log
+from harle_utils import ASSISTANT_FAILURES, log
 
 from .models import HarleResponse
 from .settings import get_agent_settings
 from .tools import show_tool_results
-
-ASSISTANT_FAILURES = (
-    APIError,
-    ClientError,
-    ServerError,
-    RuntimeError,
-    ToolAccessDeniedError,
-    ValueError,
-    ValidationError,
-)
 
 
 def retry(

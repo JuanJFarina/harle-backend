@@ -12,6 +12,7 @@ from harle_domain.messaging import (
     RecentMediaStore,
     TelegramMediaDownloader,
 )
+from harle_services.assistant import GeneratedResponse
 from harle_services.bootstrap import ProcessRuntime
 from harle_services.messaging import MessageCoordinator, MessageFragment, MessageTurn
 from harle_services.runtime import UserRuntime
@@ -75,8 +76,8 @@ def test_failed_telegram_delivery_does_not_persist_completion(
         coordinator = FakeCoordinator(turn)
         harle = FakeHarle()
 
-        async def generate_response(**_: object) -> object:
-            return assistant_module._GeneratedTurn(
+        async def generate_response(**_: object) -> GeneratedResponse:
+            return GeneratedResponse(
                 harle=cast(Harle, harle),
                 result=HarleRunResult(response_text="Hi"),
             )
