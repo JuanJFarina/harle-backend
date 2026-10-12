@@ -14,7 +14,7 @@ from harle_api.payloads import (
 )
 from harle_api.settings import ApiSettings, get_settings
 from harle_domain.accounts import SubscriptionPeriod
-from harle_domain.events import EventType, InternalEvent
+from harle_domain.events import EventStatus, EventType, InternalEvent
 from harle_services.events import (
     CreateEvent,
     EventQuery,
@@ -73,6 +73,7 @@ async def get_events(
     occurrences = runtime.scheduler.events.occurrences_for_range(
         events=events,
         query=query,
+        include_disabled=True,
     )
     return EventListPayload.model_validate(
         {
@@ -110,7 +111,7 @@ async def post_event(
                 recurrence_rule=recurrence_rule(validated.recurrence_rule),
             ),
         )
-    except ValueError as exc:
+    except (OverflowError, ValueError) as exc:
         raise InvalidEventError from exc
     return await _mutation_payload(request, context, event, "created")
 
@@ -140,7 +141,7 @@ async def post_event_update(
                 replace_recurrence=validated.replaces_recurrence,
             ),
         )
-    except ValueError as exc:
+    except (OverflowError, ValueError) as exc:
         raise InvalidEventError from exc
     if event is None:
         raise EventNotFoundError
@@ -154,7 +155,9 @@ async def post_event_disable(
     x_csrf_token: Annotated[str | None, Header(alias="X-CSRF-Token")] = None,
 ) -> EventMutationPayload:
     context = await _mutation_context(request, x_csrf_token)
-    await _require_user_event(request, context, event_id)
+    current = await _require_user_event(request, context, event_id)
+    if current.status is EventStatus.DISABLED:
+        return await _mutation_payload(request, context, current, "disabled")
     event = await get_runtime(request).scheduler.events.disable(
         user_id=context.user_id,
         event_id=event_id,
@@ -172,7 +175,7 @@ async def post_event_enable(
 ) -> EventMutationPayload:
     context = await _mutation_context(request, x_csrf_token)
     event = await _require_user_event(request, context, event_id)
-    if event.status.value == "active":
+    if event.status is EventStatus.ACTIVE:
         return await _mutation_payload(request, context, event, "enabled")
     enabled = await get_runtime(request).scheduler.events.enable(
         user_id=context.user_id,

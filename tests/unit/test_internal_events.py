@@ -497,6 +497,14 @@ def test_event_service_isolates_disable_enable_and_physical_deletion() -> None:
         disabled = await service.disable(user_id=owner_id, event_id=event.id)
         assert disabled is not None
         assert disabled.status is EventStatus.DISABLED
+        updated_while_disabled = await service.update(
+            user_id=owner_id,
+            event_id=event.id,
+            changes=UpdateEvent(title="Updated while disabled"),
+        )
+        assert updated_while_disabled is not None
+        assert updated_while_disabled.title == "Updated while disabled"
+        assert updated_while_disabled.status is EventStatus.DISABLED
         reenabled = await service.enable(user_id=owner_id, event_id=event.id)
         assert reenabled is not None
         assert reenabled.status is EventStatus.ACTIVE
@@ -510,7 +518,7 @@ def test_event_service_isolates_disable_enable_and_physical_deletion() -> None:
                 timezone_name="America/Argentina/Cordoba",
             ),
         )
-        assert await service.list_for_range(
+        disabled_events = await service.list_for_range(
             user_id=owner_id,
             query=EventQuery(
                 start_date=date(2026, 9, 1),
@@ -518,6 +526,21 @@ def test_event_service_isolates_disable_enable_and_physical_deletion() -> None:
                 timezone_name="America/Argentina/Cordoba",
                 include_disabled=True,
             ),
+        )
+        assert disabled_events
+        query = EventQuery(
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 9, 3),
+            timezone_name="America/Argentina/Cordoba",
+        )
+        assert not service.occurrences_for_range(
+            events=disabled_events,
+            query=query,
+        )
+        assert service.occurrences_for_range(
+            events=disabled_events,
+            query=query,
+            include_disabled=True,
         )
 
         deleted = await service.delete(user_id=owner_id, event_id=event.id)
@@ -677,6 +700,8 @@ def test_event_tool_preserves_omitted_zero_and_positive_notification_leads() -> 
         CreateEventArgs(**schedule, notify_minutes_before=30).notify_minutes_before
         == 30
     )
+    with pytest.raises(ValueError):
+        CreateEventArgs(**schedule, notify_minutes_before=525601)
 
     event_id = uuid4()
     assert (

@@ -14,6 +14,7 @@ from .quota import (
 )
 from .scheduler import AgentsScheduler
 from .service import (
+    MAX_NOTIFICATION_LEAD_MINUTES,
     AllDayEventSchedule,
     CreateEvent,
     EventQuery,
@@ -34,6 +35,7 @@ __all__ = [
     "EventSchedule",
     "EventService",
     "InteractionEventService",
+    "MAX_NOTIFICATION_LEAD_MINUTES",
     "NotificationQuotaAdmission",
     "NotificationQuotaExceeded",
     "NotificationQuotaReservation",

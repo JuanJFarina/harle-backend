@@ -108,6 +108,8 @@ def test_event_list_returns_user_events_occurrences_timezone_and_quota(
     payload = response.json()
     assert payload["timezone"] == "America/Argentina/Cordoba"
     assert [event["event_id"] for event in payload["events"]] == [str(EVENT_ID)]
+    assert payload["events"][0]["local_start"] == "2026-10-03T16:30:00-03:00"
+    assert payload["events"][0]["local_end"] == "2026-10-03T17:30:00-03:00"
     assert payload["occurrences"][0]["event_id"] == str(EVENT_ID)
     assert payload["notification_quota"]["remaining"] == 42
 
@@ -137,13 +139,46 @@ def test_event_mutations_require_origin_and_csrf(monkeypatch) -> None:
         f"/api/events/{EVENT_ID}/disable",
         headers={"Origin": "https://app.test", "X-CSRF-Token": "csrf-token"},
     )
+    disabled_again = client.post(
+        f"/api/events/{EVENT_ID}/disable",
+        headers={"Origin": "https://app.test", "X-CSRF-Token": "csrf-token"},
+    )
+    updated_while_disabled = client.post(
+        f"/api/events/{EVENT_ID}",
+        json={"title": "Updated dentist"},
+        headers={"Origin": "https://app.test", "X-CSRF-Token": "csrf-token"},
+    )
 
     assert rejected.status_code == 403
     assert rejected.json()["error"]["code"] == "invalid_csrf"
     assert created.status_code == 200
     assert created.json()["operation"] == "created"
     assert disabled.status_code == 200
+    assert disabled_again.status_code == 200
+    assert disabled_again.json()["operation"] == "disabled"
+    assert updated_while_disabled.status_code == 200
     assert events.event.status is EventStatus.DISABLED
+
+
+def test_event_notification_lead_is_bounded(monkeypatch) -> None:
+    client, _ = _client(monkeypatch)
+
+    response = client.post(
+        "/api/events",
+        json={
+            "title": "Far future reminder",
+            "description": "",
+            "starts_at": "2026-10-03T16:30:00",
+            "ends_at": "2026-10-03T17:30:00",
+            "timezone": "America/Argentina/Cordoba",
+            "notify_minutes_before": 525601,
+            "recurrence_rule": None,
+        },
+        headers={"Origin": "https://app.test", "X-CSRF-Token": "csrf-token"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
 
 
 def test_event_range_is_bounded(monkeypatch) -> None:
