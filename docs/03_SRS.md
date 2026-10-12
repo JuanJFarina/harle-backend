@@ -280,12 +280,12 @@ The endpoint catalog in this section is the backend source of truth for `harle-f
 
 #### Personal event management
 
-- **FR-159**: `GET /api/events` shall list only the authenticated user's `user_event` definitions overlapping a bounded inclusive local date range and shall return active one-time or recurring occurrences projected by backend recurrence and timezone rules.
+- **FR-159**: `GET /api/events` shall list only the authenticated user's `user_event` definitions overlapping a bounded inclusive local date range and shall return one-time or recurring occurrences projected by backend recurrence and timezone rules. When disabled definitions are requested, their projected occurrences may be returned solely so management clients can display and re-enable them; clients shall use the definition status to keep them out of the active calendar.
 - **FR-160**: Event list responses shall include the configured user timezone and the current subscription-period event-notification limit, remaining successful deliveries, and reset boundary.
 - **FR-161**: `POST /api/events` and the update, enable, disable, and delete command routes shall require an authenticated session, allowed frontend origin, and CSRF proof.
 - **FR-162**: Browser event creation and update shall support timed and all-day schedules, notification lead time, and infinite weekly or monthly recurrence while preserving the same domain validation used by assistant tools.
 - **FR-163**: Browser event routes shall never expose or mutate `system_event` or `interaction_event` records, and ownership shall always be resolved from the session.
-- **FR-164**: Disabling an event shall preserve it without producing occurrences or notifications; deletion shall remain permanent.
+- **FR-164**: Disabling an event shall preserve it while preventing scheduled notifications and active-calendar placement. Read APIs may still project its dates for management purposes; deletion shall remain permanent.
 
 ### Nonfunctional Requirements
 

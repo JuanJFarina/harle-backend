@@ -48,6 +48,7 @@
 - **Paid subscription lifecycle**: Approved recurring payments activate exact paid periods, rejected payments suspend access, and later approved retries recover it.
 - **Period-end cancellation**: Cancelling stops future provider charges, preserves already-paid access, and returns the account to Gratuito after period end.
 - **Web event management**: Authenticated browser users can list bounded calendar ranges with backend-expanded recurring occurrences, create and update timed or all-day personal events, configure reminders and weekly or monthly recurrence, disable or re-enable events, and permanently delete them.
+- **Disabled-event management**: Disabled events never notify or appear as active calendar entries, but the web API projects their dates when requested so the management list can keep them visible and re-enable them.
 - **Web event safety**: Event ownership and timezone come from the signed session and user profile, browser mutations require origin and CSRF verification, and the API exposes the current notification-delivery allowance without exposing system or interaction events.
 
 ## Pending Product MVP
