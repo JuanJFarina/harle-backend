@@ -3,16 +3,12 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import TypeVar
 from uuid import UUID
-from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from harle_domain.events import (
     InteractionEvent,
     InternalEvent,
-    MonthlyRecurrence,
-    RecurrenceRule,
-    WeeklyRecurrence,
 )
 from harle_domain.tools import (
     ToolCallResult,
@@ -29,6 +25,7 @@ from harle_services.events import (
     EventService,
     InteractionEventService,
     UpdateEvent,
+    event_payload,
 )
 
 from .event_schedules import (
@@ -195,7 +192,7 @@ class _EventToolHandlers:
                 "ok": True,
                 "start_date": validated.start_date.isoformat(),
                 "end_date": validated.end_date.isoformat(),
-                "events": [_event_payload(event) for event in events],
+                "events": [event_payload(event) for event in events],
                 "interaction_event": (
                     _interaction_event_payload(interaction_event)
                     if interaction_event is not None
@@ -360,18 +357,6 @@ def _event_registration(
     )
 
 
-def _recurrence_payload(
-    value: RecurrenceRule | None,
-) -> Mapping[str, object] | None:
-    if isinstance(value, WeeklyRecurrence):
-        return {
-            "week_days": sorted(day.value for day in value.days),
-        }
-    if isinstance(value, MonthlyRecurrence):
-        return {"month_days": sorted(value.days)}
-    return None
-
-
 def _mutation_payload(
     event: InternalEvent | None,
     operation: str,
@@ -381,7 +366,7 @@ def _mutation_payload(
         "ok": event is not None,
         "operation": operation,
         "reason": None if event is not None else "Event was not found.",
-        "event": _event_payload(event) if event is not None else None,
+        "event": event_payload(event) if event is not None else None,
         "notification_quota": notification_quota,
     }
 
@@ -430,41 +415,6 @@ async def _notification_quota_payload(
         "period_limit": status.limit,
         "remaining": status.remaining,
         "period_ends_at": status.resets_at.isoformat().replace("+00:00", "Z"),
-    }
-
-
-def _event_payload(event: InternalEvent) -> Mapping[str, object]:
-    timezone_info = ZoneInfo(event.timezone)
-    local_start = event.starts_at.astimezone(timezone_info)
-    local_end = event.ends_at.astimezone(timezone_info)
-    if event.all_day:
-        start_value = local_start.date().isoformat()
-        end_value = (local_end.date() - timedelta(days=1)).isoformat()
-    else:
-        start_value = local_start.isoformat()
-        end_value = local_end.isoformat()
-    return {
-        "event_id": str(event.id),
-        "title": event.title,
-        "description": event.description,
-        "local_start": start_value,
-        "local_end": end_value,
-        "timezone": event.timezone,
-        "all_day": event.all_day,
-        "event_type": event.event_type.value,
-        "status": event.status.value,
-        "recurrence_rule": _recurrence_payload(event.recurrence_rule),
-        "notification_window_start": event.notification_window_start.astimezone(
-            timezone_info,
-        ).isoformat(),
-        "notify_minutes_before": int(
-            (event.starts_at - event.notification_window_start).total_seconds() / 60,
-        ),
-        "last_notified_at": (
-            event.last_notified_at.astimezone(timezone_info).isoformat()
-            if event.last_notified_at is not None
-            else None
-        ),
     }
 
 

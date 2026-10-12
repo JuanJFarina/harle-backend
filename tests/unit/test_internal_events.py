@@ -17,6 +17,7 @@ from harle_domain.events import (
     all_day_event_interval,
     due_recurrence_interval,
     recurrence_interval,
+    recurrence_intervals_for_range,
     recurrence_overlaps_range,
     recurs_on,
     timed_event_interval,
@@ -149,6 +150,24 @@ def test_recurrence_range_and_notification_use_virtual_occurrences() -> None:
     )
     assert ongoing is not None
     assert ongoing.starts_at == datetime(2026, 9, 7, 23, tzinfo=timezone.utc)
+
+
+def test_recurrence_projects_only_occurrences_overlapping_a_bounded_range() -> None:
+    interval = all_day_event_interval(
+        start_date=date(2026, 1, 31),
+        end_date=date(2026, 1, 31),
+        timezone_name="America/Argentina/Cordoba",
+    )
+    occurrences = recurrence_intervals_for_range(
+        interval=interval,
+        rule=MonthlyRecurrence(frozenset({31})),
+        starts_at=datetime(2026, 2, 1, 3, tzinfo=timezone.utc),
+        ends_at=datetime(2026, 4, 1, 3, tzinfo=timezone.utc),
+    )
+
+    assert [occurrence.starts_at for occurrence in occurrences] == [
+        datetime(2026, 3, 31, 3, tzinfo=timezone.utc),
+    ]
 
 
 def test_recurring_notification_has_one_hour_grace_period() -> None:

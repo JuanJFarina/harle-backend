@@ -24,6 +24,7 @@ class TelegramLinkStatusPayload(BaseModel):
 class SessionPayload(BaseModel):
     user_id: UUID
     display_name: str
+    timezone: str
     plan_code: str
     subscription_period_starts_at: datetime
     subscription_period_ends_at: datetime
@@ -32,11 +33,17 @@ class SessionPayload(BaseModel):
     session_expires_at: datetime
 
     @classmethod
-    def from_view(cls, view: WebSessionResult) -> "SessionPayload":
+    def from_view(
+        cls,
+        view: WebSessionResult,
+        *,
+        timezone: str,
+    ) -> "SessionPayload":
         account = view.account
         return cls(
             user_id=account.user_id,
             display_name=account.display_name,
+            timezone=timezone,
             plan_code=account.plan_code,
             subscription_period_starts_at=account.subscription_period.starts_at,
             subscription_period_ends_at=account.subscription_period.ends_at,

@@ -75,6 +75,14 @@ class PaymentProviderRejectedError(PaymentProviderError):
     pass
 
 
+class EventNotFoundError(Exception):
+    pass
+
+
+class InvalidEventError(ValueError):
+    pass
+
+
 ASSISTANT_FAILURES = (
     APIError,
     ClientError,

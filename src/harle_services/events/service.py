@@ -7,6 +7,7 @@ from harle_domain.events import (
     EventDetails,
     EventInterval,
     EventNotification,
+    EventOccurrence,
     EventRepository,
     EventStatus,
     EventTimestamps,
@@ -17,6 +18,7 @@ from harle_domain.events import (
     all_day_event_interval,
     due_recurrence_interval,
     event_range,
+    recurrence_intervals_for_range,
     recurrence_overlaps_range,
     timed_event_interval,
 )
@@ -144,6 +146,64 @@ class EventService:
                 ends_at=bounded_range.ends_at,
             )
         ]
+
+    async def get(
+        self,
+        *,
+        user_id: UUID,
+        event_id: UUID,
+        include_disabled: bool = False,
+    ) -> InternalEvent | None:
+        return await self.repository.get(
+            user_id=user_id,
+            event_id=event_id,
+            include_disabled=include_disabled,
+        )
+
+    def occurrences_for_range(
+        self,
+        *,
+        events: Sequence[InternalEvent],
+        query: EventQuery,
+    ) -> Sequence[EventOccurrence]:
+        bounded_range = event_range(
+            start_date=query.start_date,
+            end_date=query.end_date,
+            timezone_name=query.timezone_name,
+        )
+        occurrences: list[EventOccurrence] = []
+        for event in events:
+            if event.status is not EventStatus.ACTIVE:
+                continue
+            if event.recurrence_rule is None:
+                if (
+                    event.starts_at < bounded_range.ends_at
+                    and event.ends_at > bounded_range.starts_at
+                ):
+                    occurrences.append(
+                        EventOccurrence(
+                            event_id=event.id,
+                            interval=event.details.interval,
+                        ),
+                    )
+                continue
+            occurrences.extend(
+                EventOccurrence(event_id=event.id, interval=interval)
+                for interval in recurrence_intervals_for_range(
+                    interval=event.details.interval,
+                    rule=event.recurrence_rule,
+                    starts_at=bounded_range.starts_at,
+                    ends_at=bounded_range.ends_at,
+                )
+            )
+        return sorted(
+            occurrences,
+            key=lambda occurrence: (
+                occurrence.interval.starts_at,
+                occurrence.interval.ends_at,
+                occurrence.event_id,
+            ),
+        )
 
     async def create(
         self,

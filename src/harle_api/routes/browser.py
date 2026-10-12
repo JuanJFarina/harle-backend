@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from harle_api.dependencies import get_account_runtime
+from harle_api.dependencies import get_account_runtime, get_runtime
 from harle_api.payloads import (
     CheckoutPayload,
     CheckoutRequestPayload,
@@ -14,7 +14,7 @@ from harle_api.payloads import (
     TelegramLinkPayload,
 )
 from harle_api.settings import ApiSettings, get_settings
-from harle_utils import InvalidCsrfError
+from harle_utils import InvalidCsrfError, MissingProfileError
 
 router = APIRouter(prefix="/api")
 
@@ -98,7 +98,10 @@ async def get_session(request: Request) -> SessionPayload:
     view = await get_account_runtime(request).accounts.get_session(
         request.cookies.get(settings.SESSION_COOKIE_NAME),
     )
-    return SessionPayload.from_view(view)
+    profile = await get_runtime(request).profiles.get(user_id=view.account.user_id)
+    if profile is None:
+        raise MissingProfileError
+    return SessionPayload.from_view(view, timezone=profile.timezone)
 
 
 @router.post("/auth/logout")

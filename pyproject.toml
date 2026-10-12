@@ -18,6 +18,7 @@ dependencies = [
     "pydantic",
     "pydantic-settings",
     "python-dotenv",
+    "tzdata; platform_system == 'Windows'",
     "uvicorn",
 ]
 
