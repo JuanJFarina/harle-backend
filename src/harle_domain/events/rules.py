@@ -113,6 +113,41 @@ def recurrence_overlaps_range(
     return False
 
 
+def recurrence_intervals_for_range(
+    *,
+    interval: EventInterval,
+    rule: RecurrenceRule,
+    starts_at: datetime,
+    ends_at: datetime,
+) -> tuple[EventInterval, ...]:
+    if ends_at <= starts_at:
+        raise ValueError("Event range end must be after its start.")
+    timezone_info = _timezone(interval.timezone)
+    anchor_start = interval.starts_at.astimezone(timezone_info)
+    anchor_end = interval.ends_at.astimezone(timezone_info)
+    day_span = (anchor_end.date() - anchor_start.date()).days
+    local_date = max(
+        anchor_start.date(),
+        starts_at.astimezone(timezone_info).date() - timedelta(days=day_span),
+    )
+    last_date = ends_at.astimezone(timezone_info).date()
+    occurrences: list[EventInterval] = []
+    while local_date <= last_date:
+        occurrence = recurrence_interval(
+            interval=interval,
+            rule=rule,
+            local_date=local_date,
+        )
+        if (
+            occurrence is not None
+            and occurrence.starts_at < ends_at
+            and occurrence.ends_at > starts_at
+        ):
+            occurrences.append(occurrence)
+        local_date += timedelta(days=1)
+    return tuple(occurrences)
+
+
 def due_recurrence_interval(
     *,
     interval: EventInterval,

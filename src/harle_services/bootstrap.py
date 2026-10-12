@@ -11,7 +11,7 @@ from harle_domain.messaging import (
     RecentMediaStore,
     TelegramMediaDownloader,
 )
-from harle_domain.profiles import AssistantProfileRepository
+from harle_domain.profiles import AssistantProfileRepository, UserProfileRepository
 from harle_infrastructure.google_identity import GoogleOAuthClient
 from harle_infrastructure.google_sheets import (
     GoogleSheetsClientFactory,
@@ -106,6 +106,7 @@ class ProcessRuntime:
     users: UserRuntimeFactory
     tools: ToolsInjector
     messages: MessageCoordinator
+    profiles: UserProfileRepository
     telegram: TelegramRuntime
     scheduler: AgentsScheduler
 
@@ -255,6 +256,8 @@ def _build_process_runtime(
 ) -> ProcessRuntime:
     conversations = PostgresConversationRepository(pool)
     event_repository = PostgresEventRepository(pool)
+    user_profiles = PostgresUserProfileRepository(pool)
+    assistant_profiles = PostgresAssistantProfileRepository(pool)
     telegram_updates = PostgresTelegramUpdateRepository(pool)
     notification_quotas = EventNotificationQuotaService(
         PostgresEventNotificationUsageRepository(pool),
@@ -265,7 +268,8 @@ def _build_process_runtime(
     )
     recent_media = InMemoryRecentMediaStore()
     users = _create_user_runtime_factory(
-        pool,
+        user_profiles,
+        assistant_profiles,
         conversations,
     )
     account_access = _create_account_access_runtime(
@@ -287,7 +291,7 @@ def _build_process_runtime(
             interactions=interaction_service,
             notification_quotas=notification_quotas,
         ),
-        assistant_profile_repository=PostgresAssistantProfileRepository(pool),
+        assistant_profile_repository=assistant_profiles,
         recent_media_tools=RecentMediaToolDependencies(
             store=recent_media,
             downloader=messenger,
@@ -319,6 +323,7 @@ def _build_process_runtime(
             telegram_updates,
             account_access.preflight.check_rate_limit,
         ),
+        profiles=user_profiles,
         telegram=TelegramRuntime(
             messenger=messenger,
             media_downloader=messenger,
@@ -406,7 +411,8 @@ def _create_account_access_runtime(
 
 
 def _create_user_runtime_factory(
-    pool: asyncpg.Pool,
+    user_profiles: UserProfileRepository,
+    assistant_profiles: AssistantProfileRepository,
     conversations: PostgresConversationRepository,
 ) -> UserRuntimeFactory:
     def conversation_store(
@@ -420,8 +426,8 @@ def _create_user_runtime_factory(
         )
 
     return UserRuntimeFactory(
-        user_profiles=PostgresUserProfileRepository(pool),
-        assistant_profiles=PostgresAssistantProfileRepository(pool),
+        user_profiles=user_profiles,
+        assistant_profiles=assistant_profiles,
         conversation_store_builder=conversation_store,
     )
 

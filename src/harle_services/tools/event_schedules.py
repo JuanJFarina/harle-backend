@@ -12,6 +12,7 @@ from harle_domain.events import (
     WeeklyRecurrence,
 )
 from harle_services.events import (
+    MAX_NOTIFICATION_LEAD_MINUTES,
     AllDayEventSchedule,
     EventSchedule,
     TimedEventSchedule,
@@ -47,7 +48,11 @@ class CreateEventArgs(BaseModel):
     end_date: date | None = None
     timezone: str | None = Field(default=None, min_length=1)
     event_type: EventType = EventType.USER_EVENT
-    notify_minutes_before: int = Field(default=0, ge=0)
+    notify_minutes_before: int = Field(
+        default=0,
+        ge=0,
+        le=MAX_NOTIFICATION_LEAD_MINUTES,
+    )
     recurrence_rule: RecurrenceArgs | None = None
 
     model_config = ConfigDict(extra="forbid")
@@ -68,7 +73,11 @@ class UpdateEventArgs(BaseModel):
     end_date: date | None = None
     timezone: str | None = Field(default=None, min_length=1)
     event_type: EventType | None = None
-    notify_minutes_before: int | None = Field(default=None, ge=0)
+    notify_minutes_before: int | None = Field(
+        default=None,
+        ge=0,
+        le=MAX_NOTIFICATION_LEAD_MINUTES,
+    )
     recurrence_rule: RecurrenceArgs | None = None
 
     model_config = ConfigDict(extra="forbid")

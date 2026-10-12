@@ -225,7 +225,7 @@ This document distinguishes the implemented controlled-beta baseline from target
 
 ### Web API Contract
 
-The endpoint catalog in this section is the backend source of truth for `harle-frontend`. The beta web release supports Google registration, renewable free accounts, sessions, Telegram linking, public plans, and paid Mercado Pago subscriptions. Email/password authentication, broader account management, expense and event management, export, and deletion remain later work.
+The endpoint catalog in this section is the backend source of truth for `harle-frontend`. The beta web release supports Google registration, renewable free accounts, sessions, Telegram linking, public plans, paid Mercado Pago subscriptions, and personal event management. Email/password authentication, broader account management, expense management, export, and account deletion remain later work.
 
 #### Conventions and authorization
 
@@ -248,7 +248,7 @@ The endpoint catalog in this section is the backend source of truth for `harle-f
 - **FR-134**: Active free accounts shall renew their exact monthly allowance period automatically while preserving the period boundary sequence.
 - **FR-135**: Free-period renewal shall occur before Telegram conversation admission and scheduled-user resolution so period expiration alone does not interrupt active free service.
 - **FR-136**: Google sign-in shall link to an existing account only under an explicit safe linking policy; a matching unverified email alone shall not silently merge accounts.
-- **FR-137**: `GET /api/session` shall return the authenticated user's safe account, free-plan period, Telegram-link state, and CSRF metadata without returning authentication secrets or provider identifiers.
+- **FR-137**: `GET /api/session` shall return the authenticated user's safe account, configured timezone, free-plan period, Telegram-link state, and CSRF metadata without returning authentication secrets or provider identifiers.
 - **FR-138**: `POST /api/auth/logout` shall revoke the current session and clear its cookie.
 
 #### Telegram linking
@@ -276,7 +276,16 @@ The endpoint catalog in this section is the backend source of truth for `harle-f
 - **FR-155**: At the end of a cancelled paid period, access maintenance shall atomically return the user to an active free plan with a new monthly free period.
 - **FR-156**: Direct paid-to-paid changes, proration, automatic refunds, trials, and provider migration remain out of scope for the beta. A user must cancel and wait for the paid period to end before subscribing to another paid plan.
 - **FR-157**: Existing manually provisioned paid users shall remain outside Mercado Pago management until each account is migrated explicitly.
-- **FR-158**: Email/password authentication, password recovery, account/profile mutation, expense management, event management, export, deletion, and Telegram unlinking remain later capabilities.
+- **FR-158**: Email/password authentication, password recovery, account/profile mutation, expense management, export, account deletion, and Telegram unlinking remain later capabilities.
+
+#### Personal event management
+
+- **FR-159**: `GET /api/events` shall list only the authenticated user's `user_event` definitions overlapping a bounded inclusive local date range and shall return one-time or recurring occurrences projected by backend recurrence and timezone rules. When disabled definitions are requested, their projected occurrences may be returned solely so management clients can display and re-enable them; clients shall use the definition status to keep them out of the active calendar.
+- **FR-160**: Event list responses shall include the configured user timezone and the current subscription-period event-notification limit, remaining successful deliveries, and reset boundary.
+- **FR-161**: `POST /api/events` and the update, enable, disable, and delete command routes shall require an authenticated session, allowed frontend origin, and CSRF proof.
+- **FR-162**: Browser event creation and update shall support timed and all-day schedules, notification lead time, and infinite weekly or monthly recurrence while preserving the same domain validation used by assistant tools.
+- **FR-163**: Browser event routes shall never expose or mutate `system_event` or `interaction_event` records, and ownership shall always be resolved from the session.
+- **FR-164**: Disabling an event shall preserve it while preventing scheduled notifications and active-calendar placement. Read APIs may still project its dates for management purposes; deletion shall remain permanent.
 
 ### Nonfunctional Requirements
 

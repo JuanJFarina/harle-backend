@@ -47,6 +47,9 @@
 - **Signed subscription webhooks**: Provider notifications are signature-verified, claimed idempotently, and reconciled against Mercado Pago resources rather than trusted directly.
 - **Paid subscription lifecycle**: Approved recurring payments activate exact paid periods, rejected payments suspend access, and later approved retries recover it.
 - **Period-end cancellation**: Cancelling stops future provider charges, preserves already-paid access, and returns the account to Gratuito after period end.
+- **Web event management**: Authenticated browser users can list bounded calendar ranges with backend-expanded recurring occurrences, create and update timed or all-day personal events, configure reminders and weekly or monthly recurrence, disable or re-enable events, and permanently delete them.
+- **Disabled-event management**: Disabled events never notify or appear as active calendar entries, but the web API projects their dates when requested so the management list can keep them visible and re-enable them.
+- **Web event safety**: Event ownership and timezone come from the signed session and user profile, browser mutations require origin and CSRF verification, and the API exposes the current notification-delivery allowance without exposing system or interaction events.
 
 ## Pending Product MVP
 
@@ -75,7 +78,6 @@
 - **Email and password authentication**: Users may register with a verified email and password, recover access, and safely link that credential to an existing account.
 - **Account management API**: Authenticated users may inspect and update their user profile, assistant profile, proactive-interaction settings, current plan, subscription period, and usage.
 - **Expense management API**: Authenticated users may list, summarize, create, update, and permanently delete their own internal expenses through the same domain rules used by assistant tools.
-- **Event management API**: Authenticated users may list, create, update, disable, re-enable, and permanently delete their own `user_event` records through the same domain rules used by assistant tools.
 - **External context injectors**: Harle may use cached or polled context providers for data such as weather, location, reminders, calendars, or other user-authorized topics.
 - **Durable background queues**: Harle may use durable queues for scheduled agent wakeups, outbound messages, proposed actions, and integration polling when reliability requires it.
 - **Google import and synchronization**: An authorized agent tool may invoke a controlled migration or synchronization service that imports Google Sheets expenses and Google Calendar events into Harle's internal systems.

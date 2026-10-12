@@ -7,6 +7,7 @@ from harle_domain.events import (
     EventDetails,
     EventInterval,
     EventNotification,
+    EventOccurrence,
     EventRepository,
     EventStatus,
     EventTimestamps,
@@ -17,6 +18,7 @@ from harle_domain.events import (
     all_day_event_interval,
     due_recurrence_interval,
     event_range,
+    recurrence_intervals_for_range,
     recurrence_overlaps_range,
     timed_event_interval,
 )
@@ -24,6 +26,7 @@ from harle_domain.events import (
 DEFAULT_NOTIFICATION_LEAD = timedelta(0)
 DEFAULT_NOTIFICATION_GRACE_PERIOD = timedelta(hours=1)
 DEFAULT_DUE_EVENT_LIMIT = 100
+MAX_NOTIFICATION_LEAD_MINUTES = 365 * 24 * 60
 
 
 def utc_now() -> datetime:
@@ -145,6 +148,65 @@ class EventService:
             )
         ]
 
+    async def get(
+        self,
+        *,
+        user_id: UUID,
+        event_id: UUID,
+        include_disabled: bool = False,
+    ) -> InternalEvent | None:
+        return await self.repository.get(
+            user_id=user_id,
+            event_id=event_id,
+            include_disabled=include_disabled,
+        )
+
+    def occurrences_for_range(
+        self,
+        *,
+        events: Sequence[InternalEvent],
+        query: EventQuery,
+        include_disabled: bool = False,
+    ) -> Sequence[EventOccurrence]:
+        bounded_range = event_range(
+            start_date=query.start_date,
+            end_date=query.end_date,
+            timezone_name=query.timezone_name,
+        )
+        occurrences: list[EventOccurrence] = []
+        for event in events:
+            if event.status is not EventStatus.ACTIVE and not include_disabled:
+                continue
+            if event.recurrence_rule is None:
+                if (
+                    event.starts_at < bounded_range.ends_at
+                    and event.ends_at > bounded_range.starts_at
+                ):
+                    occurrences.append(
+                        EventOccurrence(
+                            event_id=event.id,
+                            interval=event.details.interval,
+                        ),
+                    )
+                continue
+            occurrences.extend(
+                EventOccurrence(event_id=event.id, interval=interval)
+                for interval in recurrence_intervals_for_range(
+                    interval=event.details.interval,
+                    rule=event.recurrence_rule,
+                    starts_at=bounded_range.starts_at,
+                    ends_at=bounded_range.ends_at,
+                )
+            )
+        return sorted(
+            occurrences,
+            key=lambda occurrence: (
+                occurrence.interval.starts_at,
+                occurrence.interval.ends_at,
+                occurrence.event_id,
+            ),
+        )
+
     async def create(
         self,
         *,
@@ -165,7 +227,10 @@ class EventService:
                 status=EventStatus.ACTIVE,
             ),
             notification=EventNotification(
-                window_start=interval.starts_at - notification_lead,
+                window_start=_notification_window_start(
+                    interval.starts_at,
+                    notification_lead,
+                ),
             ),
             timestamps=EventTimestamps(
                 created_at=now,
@@ -185,6 +250,7 @@ class EventService:
         current = await self.repository.get(
             user_id=user_id,
             event_id=event_id,
+            include_disabled=True,
         )
         if current is None:
             return None
@@ -198,7 +264,10 @@ class EventService:
             if changes.notify_before is not None
             else current.starts_at - current.notification_window_start
         )
-        notification_window_start = interval.starts_at - notification_lead
+        notification_window_start = _notification_window_start(
+            interval.starts_at,
+            notification_lead,
+        )
         recurrence_rule = (
             changes.recurrence_rule
             if changes.replace_recurrence
@@ -357,3 +426,17 @@ class EventService:
 def _require_notification_lead(value: timedelta) -> None:
     if value < timedelta(0):
         raise ValueError("Event notification lead cannot be negative.")
+    if value > timedelta(minutes=MAX_NOTIFICATION_LEAD_MINUTES):
+        raise ValueError("Event notification lead cannot exceed one year.")
+
+
+def _notification_window_start(
+    starts_at: datetime,
+    notification_lead: timedelta,
+) -> datetime:
+    try:
+        return starts_at - notification_lead
+    except OverflowError as exc:
+        raise ValueError(
+            "Event notification window exceeds the supported date range.",
+        ) from exc

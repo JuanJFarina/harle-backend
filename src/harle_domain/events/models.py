@@ -122,6 +122,12 @@ class EventNotificationOccurrence:
 
 
 @dataclass(frozen=True, slots=True)
+class EventOccurrence:
+    event_id: UUID
+    interval: EventInterval
+
+
+@dataclass(frozen=True, slots=True)
 class InternalEvent:
     id: UUID
     user_id: UUID
