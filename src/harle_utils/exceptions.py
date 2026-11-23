@@ -83,6 +83,14 @@ class InvalidEventError(ValueError):
     pass
 
 
+class ExpenseNotFoundError(Exception):
+    pass
+
+
+class InvalidFinanceError(ValueError):
+    pass
+
+
 ASSISTANT_FAILURES = (
     APIError,
     ClientError,

@@ -5,7 +5,6 @@ import asyncpg
 
 from harle_domain.conversations.ports import ConversationStore
 from harle_domain.events import EventRepository
-from harle_domain.expenses import ExpenseRepository
 from harle_domain.messaging import (
     OutboundMessenger,
     RecentMediaStore,
@@ -27,6 +26,8 @@ from harle_infrastructure.postgres import (
     PostgresEventNotificationUsageRepository,
     PostgresEventRepository,
     PostgresExpenseRepository,
+    PostgresFinanceBudgetRepository,
+    PostgresIncomeHistoryRepository,
     PostgresInteractionEventRepository,
     PostgresPaymentSubscriptionRepository,
     PostgresTelegramLinkRepository,
@@ -55,7 +56,7 @@ from harle_services.events import (
     EventService,
     InteractionEventService,
 )
-from harle_services.expenses import ExpenseService
+from harle_services.expenses import ExpenseService, FinancePlanningService
 from harle_services.messaging import MessageCoordinator
 from harle_services.profiles import AssistantProfileService
 from harle_services.runtime import UserRuntimeFactory
@@ -107,6 +108,8 @@ class ProcessRuntime:
     tools: ToolsInjector
     messages: MessageCoordinator
     profiles: UserProfileRepository
+    expenses: ExpenseService
+    finances: FinancePlanningService
     telegram: TelegramRuntime
     scheduler: AgentsScheduler
 
@@ -168,6 +171,12 @@ class EventToolDependencies:
 
 
 @dataclass(frozen=True, slots=True)
+class ExpenseToolDependencies:
+    service: ExpenseService
+    planning: FinancePlanningService | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class RecentMediaToolDependencies:
     store: RecentMediaStore
     downloader: TelegramMediaDownloader
@@ -176,7 +185,7 @@ class RecentMediaToolDependencies:
 def create_tools_injector(
     settings: LegacyGoogleSheetsSettings | None = None,
     *,
-    expense_repository: ExpenseRepository | None = None,
+    expense_tools: ExpenseToolDependencies | None = None,
     event_tools: EventToolDependencies | None = None,
     assistant_profile_repository: AssistantProfileRepository | None = None,
     recent_media_tools: RecentMediaToolDependencies | None = None,
@@ -187,10 +196,11 @@ def create_tools_injector(
             GoogleSheetsClientFactory(legacy_settings),
         ),
     ]
-    if expense_repository is not None:
+    if expense_tools is not None:
         registrations.append(
             create_internal_expenses_registration(
-                ExpenseService(expense_repository),
+                expense_tools.service,
+                expense_tools.planning,
             ),
         )
     if event_tools is not None:
@@ -254,6 +264,8 @@ def _build_process_runtime(
     config: ProcessRuntimeConfig,
     legacy_settings: LegacyGoogleSheetsSettings | None,
 ) -> ProcessRuntime:
+    # The composition root intentionally names every process-scoped dependency.
+    # pylint: disable=too-many-locals
     conversations = PostgresConversationRepository(pool)
     event_repository = PostgresEventRepository(pool)
     user_profiles = PostgresUserProfileRepository(pool)
@@ -283,9 +295,19 @@ def _build_process_runtime(
         PostgresInteractionEventRepository(pool),
         subscriptions=account_access.account.subscriptions,
     )
+    expense_repository = PostgresExpenseRepository(pool)
+    expense_service = ExpenseService(expense_repository)
+    finance_planning = FinancePlanningService(
+        expenses=expense_repository,
+        incomes=PostgresIncomeHistoryRepository(pool),
+        budgets=PostgresFinanceBudgetRepository(pool),
+    )
     tools = create_tools_injector(
         legacy_settings,
-        expense_repository=PostgresExpenseRepository(pool),
+        expense_tools=ExpenseToolDependencies(
+            service=expense_service,
+            planning=finance_planning,
+        ),
         event_tools=EventToolDependencies(
             repository=event_repository,
             interactions=interaction_service,
@@ -324,6 +346,8 @@ def _build_process_runtime(
             account_access.preflight.check_rate_limit,
         ),
         profiles=user_profiles,
+        expenses=expense_service,
+        finances=finance_planning,
         telegram=TelegramRuntime(
             messenger=messenger,
             media_downloader=messenger,

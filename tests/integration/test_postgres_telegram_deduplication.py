@@ -27,6 +27,7 @@ SCHEMA_PATHS = (
     ROOT / "scripts" / "apply_subscription_interactions.sql",
     ROOT / "scripts" / "apply_interaction_frequency.sql",
     ROOT / "scripts" / "apply_internal_expenses.sql",
+    ROOT / "scripts" / "apply_finance_planning.sql",
     ROOT / "scripts" / "apply_internal_events.sql",
     ROOT / "scripts" / "apply_event_notification_quotas.sql",
     ROOT / "scripts" / "apply_telegram_dedup_ordering.sql",

@@ -142,6 +142,10 @@ This document distinguishes the implemented controlled-beta baseline from target
 - **FR-41**: Finance tools shall validate amounts, dates, months, categories, refund flags, and installment counts before proposing or executing changes.
 - **FR-42**: Every internal finance operation shall filter by the requesting user's UUID. Legacy Google Sheets tools shall not modify cells outside the configured expense ranges.
 - **FR-43**: Commercial users shall receive internal expense tools. Only Juan's configured stable internal UUID shall receive, construct, or execute legacy Google Sheets expense tools.
+- **FR-43A**: Commercial users shall store positive net monthly ARS income as effective-dated history, and analysis shall use the latest entry not newer than the analyzed period cutoff.
+- **FR-43B**: Commercial users shall maintain one current budget assigning every expense category and savings a percentage whose total is exactly 100%.
+- **FR-43C**: Savings shall be a planned allocation rather than an expense transaction category. The system shall distinguish the savings target from income remaining after net expenses.
+- **FR-43D**: Monthly finance analysis shall expose gross expenses, refunds, net expenses, income and budget comparisons by category, remaining income, savings target, and a six-week trend.
 
 ### Productivity
 
@@ -225,7 +229,7 @@ This document distinguishes the implemented controlled-beta baseline from target
 
 ### Web API Contract
 
-The endpoint catalog in this section is the backend source of truth for `harle-frontend`. The beta web release supports Google registration, renewable free accounts, sessions, Telegram linking, public plans, paid Mercado Pago subscriptions, and personal event management. Email/password authentication, broader account management, expense management, export, and account deletion remain later work.
+The endpoint catalog in this section is the backend source of truth for `harle-frontend`. The beta web release supports Google registration, renewable free accounts, sessions, Telegram linking, public plans, paid Mercado Pago subscriptions, personal event management, and personal finance management. Email/password authentication, broader account management, export, and account deletion remain later work.
 
 #### Conventions and authorization
 
@@ -276,7 +280,7 @@ The endpoint catalog in this section is the backend source of truth for `harle-f
 - **FR-155**: At the end of a cancelled paid period, access maintenance shall atomically return the user to an active free plan with a new monthly free period.
 - **FR-156**: Direct paid-to-paid changes, proration, automatic refunds, trials, and provider migration remain out of scope for the beta. A user must cancel and wait for the paid period to end before subscribing to another paid plan.
 - **FR-157**: Existing manually provisioned paid users shall remain outside Mercado Pago management until each account is migrated explicitly.
-- **FR-158**: Email/password authentication, password recovery, account/profile mutation, expense management, export, account deletion, and Telegram unlinking remain later capabilities.
+- **FR-158**: Email/password authentication, password recovery, account/profile mutation, export, account deletion, and Telegram unlinking remain later capabilities.
 
 #### Personal event management
 

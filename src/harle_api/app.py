@@ -11,6 +11,7 @@ from harle_api.exception_handlers import (
 from harle_api.routes import (
     browser_router,
     events_router,
+    finances_router,
     health_router,
     payments_router,
     telegram_router,
@@ -55,6 +56,7 @@ harle_app.include_router(telegram_router)
 harle_app.include_router(payments_router)
 harle_app.include_router(browser_router)
 harle_app.include_router(events_router)
+harle_app.include_router(finances_router)
 
 __all__ = [
     "get_healthcheck",

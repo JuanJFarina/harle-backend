@@ -1,3 +1,4 @@
+from .planning import FinancePlanningService
 from .service import (
     CreateExpense,
     CreateInstallmentExpense,
@@ -12,4 +13,5 @@ __all__ = [
     "ExpenseChanges",
     "ExpenseCreationResult",
     "ExpenseService",
+    "FinancePlanningService",
 ]

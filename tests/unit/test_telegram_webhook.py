@@ -17,6 +17,7 @@ from harle_domain.profiles import UserProfileRepository
 from harle_services.access import PreflightService, TemporaryBan
 from harle_services.bootstrap import ProcessRuntime, TelegramRuntime
 from harle_services.events import AgentsScheduler
+from harle_services.expenses import ExpenseService, FinancePlanningService
 from harle_services.messaging import (
     MessageCoordinator,
     MessageFragment,
@@ -94,6 +95,8 @@ def fake_runtime(
         tools=cast(ToolsInjector, object()),
         messages=cast(MessageCoordinator, messages),
         profiles=cast(UserProfileRepository, object()),
+        expenses=cast(ExpenseService, object()),
+        finances=cast(FinancePlanningService, object()),
         telegram=TelegramRuntime(
             messenger=cast(OutboundMessenger, messenger or FakeMessenger()),
             media_downloader=cast(TelegramMediaDownloader, object()),

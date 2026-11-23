@@ -32,12 +32,17 @@ from harle_infrastructure.google_sheets import (
     GoogleSheetsConnectionSettings,
     LegacyGoogleSheetsSettings,
 )
-from harle_services.bootstrap import EventToolDependencies, create_tools_injector
+from harle_services.bootstrap import (
+    EventToolDependencies,
+    ExpenseToolDependencies,
+    create_tools_injector,
+)
 from harle_services.events import (
     EventNotificationQuotaService,
     InteractionEventService,
     NotificationQuotaStatus,
 )
+from harle_services.expenses import ExpenseService
 from harle_services.tools import ToolInjectionContext
 from harle_services.tools.internal_events import EventIdentifierArgs, ListEventsArgs
 from harle_services.tools.internal_profiles import (
@@ -191,7 +196,7 @@ def test_tool_access_matrix_and_lazy_sheets_configuration() -> None:
     )
     commercial_store = create_tools_injector(
         incomplete_settings,
-        expense_repository=expense_repository,
+        expense_tools=ExpenseToolDependencies(ExpenseService(expense_repository)),
         event_tools=event_tools,
     ).inject(
         ToolInjectionContext(
@@ -223,7 +228,7 @@ def test_tool_access_matrix_and_lazy_sheets_configuration() -> None:
     )
     juan_store = create_tools_injector(
         configured_settings,
-        expense_repository=expense_repository,
+        expense_tools=ExpenseToolDependencies(ExpenseService(expense_repository)),
         event_tools=event_tools,
     ).inject(
         ToolInjectionContext(
@@ -242,7 +247,7 @@ def test_tool_access_matrix_and_lazy_sheets_configuration() -> None:
     }
     event_store = create_tools_injector(
         configured_settings,
-        expense_repository=expense_repository,
+        expense_tools=ExpenseToolDependencies(ExpenseService(expense_repository)),
         event_tools=event_tools,
     ).inject(
         ToolInjectionContext(
@@ -264,7 +269,9 @@ def test_tool_access_matrix_and_lazy_sheets_configuration() -> None:
 def test_tool_filter_uses_complete_terms_and_falls_back_to_all_families() -> None:
     store = create_tools_injector(
         LegacyGoogleSheetsSettings(_env_file=None),
-        expense_repository=cast(ExpenseRepository, object()),
+        expense_tools=ExpenseToolDependencies(
+            ExpenseService(cast(ExpenseRepository, object())),
+        ),
         event_tools=EventToolDependencies(
             repository=cast(EventRepository, object()),
             interactions=cast(InteractionEventService, FakeInteractions()),
@@ -286,7 +293,9 @@ def test_tool_filter_uses_complete_terms_and_falls_back_to_all_families() -> Non
 def test_scheduled_tools_include_only_authorized_reads() -> None:
     injector = create_tools_injector(
         LegacyGoogleSheetsSettings(_env_file=None),
-        expense_repository=cast(ExpenseRepository, object()),
+        expense_tools=ExpenseToolDependencies(
+            ExpenseService(cast(ExpenseRepository, object())),
+        ),
         event_tools=EventToolDependencies(
             repository=cast(EventRepository, object()),
             interactions=cast(InteractionEventService, FakeInteractions()),
@@ -411,7 +420,9 @@ def test_interaction_frequency_tools_read_update_and_exclude_scheduled_writes() 
         ),
     )
     injector = create_tools_injector(
-        expense_repository=cast(ExpenseRepository, object()),
+        expense_tools=ExpenseToolDependencies(
+            ExpenseService(cast(ExpenseRepository, object())),
+        ),
         event_tools=EventToolDependencies(
             repository=cast(EventRepository, EmptyEventRepository()),
             interactions=cast(InteractionEventService, FakeInteractions()),

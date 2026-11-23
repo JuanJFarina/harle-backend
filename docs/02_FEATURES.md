@@ -16,6 +16,10 @@
 - **Selective tool loading**: A registry authorizes tool families per user, then selects likely expense or event families through explicit English and Spanish terms, falling back to all authorized families when no term matches.
 - **Direct modification policy**: Modifying tools are instructed to execute only when the current user message directly requests the change.
 - **Commercial expense tracking**: Commercial users can add expenses and refunds, split purchases into 2 to 12 installments, query a day, summarize a month, update a transaction or installment group, and permanently delete it.
+- **Effective-dated monthly income**: Commercial users can store net monthly ARS income with an effective date; month analysis uses the latest entry applicable to that period and preserves earlier income history.
+- **Current 100% budget**: Commercial users can allocate exactly 100% of income across all fixed expense categories plus savings through Telegram or the authenticated web API.
+- **Finance planning analysis**: Monthly analysis compares net category spending with allocated amounts, reports income percentages, gross expenses, refunds, remaining income, a savings target, and six-week spending trends.
+- **Savings semantics**: Savings is a planned allocation rather than an expense category. Remaining income is reported separately and is never represented as confirmed savings.
 - **Expense policy**: Commercial expenses use Argentine pesos and fixed categories for rent, essential services, non-essential services, home, transport, outings, shopping, and other expenses.
 - **Expense date handling**: Transactions without an explicit date use the previous local day from 00:00 through 04:59, and Harle reports when this rule was applied.
 - **Juan-only Google Sheets expenses**: Juan's stable internal UUID receives the existing private Google Sheets expense family instead of commercial PostgreSQL expenses.

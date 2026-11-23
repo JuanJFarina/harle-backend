@@ -11,8 +11,10 @@ from harle_utils import (
     AccessDeniedError,
     AuthenticationRequiredError,
     EventNotFoundError,
+    ExpenseNotFoundError,
     InvalidCsrfError,
     InvalidEventError,
+    InvalidFinanceError,
     InvalidOAuthError,
     InvalidPaymentWebhookError,
     OAuthProviderError,
@@ -81,6 +83,32 @@ async def invalid_event_handler(
 ) -> JSONResponse:
     del error
     return _web_error(request, 422, "invalid_event", "The event is invalid.")
+
+
+async def expense_not_found_handler(
+    request: Request,
+    error: Exception,
+) -> JSONResponse:
+    del error
+    return _web_error(
+        request,
+        404,
+        "expense_not_found",
+        "The expense transaction was not found.",
+    )
+
+
+async def invalid_finance_handler(
+    request: Request,
+    error: Exception,
+) -> JSONResponse:
+    del error
+    return _web_error(
+        request,
+        422,
+        "invalid_finance",
+        "The finance data is invalid.",
+    )
 
 
 async def invalid_oauth_handler(
@@ -231,7 +259,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     )
     app.add_exception_handler(InvalidCsrfError, invalid_csrf_handler)
     app.add_exception_handler(EventNotFoundError, event_not_found_handler)
+    app.add_exception_handler(ExpenseNotFoundError, expense_not_found_handler)
     app.add_exception_handler(InvalidEventError, invalid_event_handler)
+    app.add_exception_handler(InvalidFinanceError, invalid_finance_handler)
     app.add_exception_handler(InvalidOAuthError, invalid_oauth_handler)
     app.add_exception_handler(OAuthProviderError, oauth_provider_handler)
     app.add_exception_handler(

@@ -170,6 +170,7 @@ psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_multi_user
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_subscription_interactions.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_interaction_frequency.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_internal_expenses.sql
+psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_finance_planning.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_internal_events.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_event_notification_quotas.sql
 psql "$env:POSTGRES_DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/apply_telegram_dedup_ordering.sql
