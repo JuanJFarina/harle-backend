@@ -158,10 +158,11 @@ FAMILY = ToolFamily.INTERNAL_EXPENSES
 
 SHARED_INSTRUCTIONS = """For every internal expense tool:
 - Amounts are Argentine pesos and categories are rent, essential_services, non_essential_services, home, transport, outings, shopping, or other.
+- Never accept a user-selected expense date after the user's current local date. Automatically generated later installments may fall in future months.
 - When no date is supplied, transactions from 00:00 through 04:59 use the previous local day; tell the user when used_previous_day_rule is true.
 - Read results include transaction UUIDs. Updating or deleting an installment UUID affects its entire installment group.
 - Income history is effective-dated. Budgets are current settings and always allocate exactly 100%, including savings.
-- Savings is a planned allocation, not an expense category; remaining income is not confirmed savings.
+- Savings is not an expense category. Report remaining income after net expenses as actual savings against its configured budget; it may exceed the target or become negative.
 - Deletion is permanent. Never expose or request external spreadsheet details."""
 
 DEFINITIONS = (
@@ -377,6 +378,7 @@ def create_internal_expenses_registration(
             validated = _require_model(args, UpdateExpenseArgs)
             transactions = await service.update(
                 user_id=context.user_id,
+                timezone_name=context.timezone,
                 transaction_id=validated.transaction_id,
                 changes=validated.to_changes(),
             )
@@ -416,6 +418,7 @@ def create_internal_expenses_registration(
                 user_id=context.user_id,
                 year=validated.year,
                 month=validated.month,
+                timezone_name=context.timezone,
             )
             history = await planning.income_history(user_id=context.user_id)
             return ToolCallResult(
@@ -441,6 +444,7 @@ def create_internal_expenses_registration(
                 user_id=context.user_id,
                 amount=validated.amount,
                 effective_on=effective_on,
+                timezone_name=context.timezone,
             )
             return ToolCallResult(
                 called_tool_name="set_monthly_income",
@@ -466,6 +470,7 @@ def create_internal_expenses_registration(
                 user_id=context.user_id,
                 year=validated.year,
                 month=validated.month,
+                timezone_name=context.timezone,
             )
             return ToolCallResult(
                 called_tool_name="get_monthly_finance_summary",
@@ -628,7 +633,11 @@ def _finance_analysis_payload(
         "categories": [
             {
                 "category": category.category.value,
-                "actual_amount": str(category.actual_amount),
+                "actual_amount": (
+                    str(category.actual_amount)
+                    if category.actual_amount is not None
+                    else None
+                ),
                 "income_percentage": (
                     str(category.income_percentage)
                     if category.income_percentage is not None

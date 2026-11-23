@@ -206,7 +206,7 @@ erDiagram
 - Expense deletion is permanent. Selecting one installment for update or deletion affects its complete group.
 - Income history contains positive monthly net ARS amounts. The latest entry whose effective date is not after the analysis cutoff applies.
 - Finance budget settings allocate every fixed expense category plus savings. Every percentage is between 0 and 100 and their sum is exactly 100.
-- Savings is a budget allocation rather than an expense category; remaining income is not asserted to be confirmed savings.
+- Savings is not an expense category. Monthly analysis presents remaining income after net expenses as actual savings against the configured savings allocation; the value may exceed its target or become negative.
 
 ### Internal Events
 

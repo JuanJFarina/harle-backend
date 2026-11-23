@@ -185,6 +185,7 @@ class ExpenseService:
         self,
         *,
         user_id: UUID,
+        timezone_name: str,
         transaction_id: UUID,
         changes: ExpenseChanges,
     ) -> Sequence[ExpenseTransaction]:
@@ -195,6 +196,12 @@ class ExpenseService:
         if not related:
             return []
         now = self._now()
+        if changes.transaction_date is not None:
+            resolve_transaction_date(
+                current_time=now,
+                timezone_name=timezone_name,
+                requested_date=changes.transaction_date,
+            )
         ordered = sorted(
             related,
             key=lambda transaction: transaction.installment_number or 1,

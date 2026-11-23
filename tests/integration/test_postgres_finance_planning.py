@@ -80,11 +80,13 @@ async def verify_finance_planning(database_url: str) -> None:
             user_id=first_id,
             amount=Decimal("1000.00"),
             effective_on=date(2026, 10, 1),
+            timezone_name="UTC",
         )
         await service.save_income(
             user_id=first_id,
             amount=Decimal("1200.00"),
             effective_on=date(2026, 11, 1),
+            timezone_name="UTC",
         )
         percentages = {category: Decimal("0.00") for category in BudgetCategory}
         percentages[BudgetCategory.HOME] = Decimal("70.00")
@@ -95,11 +97,13 @@ async def verify_finance_planning(database_url: str) -> None:
             user_id=first_id,
             year=2026,
             month=10,
+            timezone_name="UTC",
         )
         second = await service.analyze_month(
             user_id=second_id,
             year=2026,
             month=10,
+            timezone_name="UTC",
         )
 
         assert october.income is not None

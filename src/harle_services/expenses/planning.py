@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from harle_domain.expenses import (
     ARS_CURRENCY,
@@ -41,9 +42,10 @@ class FinancePlanningService:
         user_id: UUID,
         amount: Decimal,
         effective_on: date,
+        timezone_name: str,
     ) -> IncomeHistoryEntry:
         now = self._now()
-        if effective_on > now.date():
+        if effective_on > _local_date(now, timezone_name):
             raise ValueError("Income cannot become effective in the future.")
         entry = IncomeHistoryEntry(
             id=uuid4(),
@@ -95,6 +97,7 @@ class FinancePlanningService:
         user_id: UUID,
         year: int,
         month: int,
+        timezone_name: str,
     ) -> MonthlyFinanceAnalysis:
         # The analysis keeps named monetary intermediates to preserve its auditability.
         # pylint: disable=too-many-locals
@@ -104,7 +107,7 @@ class FinancePlanningService:
             if month == 12
             else date(year, month + 1, 1)
         )
-        now_date = self._now().date()
+        now_date = _local_date(self._now(), timezone_name)
         month_end = next_month - timedelta(days=1)
         cutoff = now_date if month_start <= now_date <= month_end else month_end
         trend_start = cutoff - timedelta(days=41)
@@ -195,7 +198,7 @@ def _category_analysis(
     results: list[FinanceCategoryAnalysis] = []
     for category in BudgetCategory:
         actual = (
-            remaining_income or Decimal("0.00")
+            remaining_income
             if category is BudgetCategory.SAVINGS
             else net_by_category[ExpenseCategory(category.value)]
         )
@@ -247,11 +250,22 @@ def _weekly_trend(
     )
 
 
-def _percentage(value: Decimal, base: Decimal | None) -> Decimal | None:
-    if base is None or base == 0:
+def _percentage(
+    value: Decimal | None,
+    base: Decimal | None,
+) -> Decimal | None:
+    if value is None or base is None or base == 0:
         return None
     return (value * HUNDRED / base).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
 def _money(value: Decimal) -> Decimal:
     return value.quantize(CENT, rounding=ROUND_HALF_UP)
+
+
+def _local_date(now: datetime, timezone_name: str) -> date:
+    try:
+        local_timezone = ZoneInfo(timezone_name)
+    except ZoneInfoNotFoundError as exc:
+        raise ValueError(f"Unknown IANA timezone: {timezone_name}.") from exc
+    return now.astimezone(local_timezone).date()

@@ -54,6 +54,7 @@ async def get_finance_dashboard(
             user_id=context.user_id,
             year=year,
             month=month,
+            timezone_name=context.timezone,
         )
     except ValueError as exc:
         raise InvalidFinanceError from exc
@@ -75,6 +76,7 @@ async def post_income(
             user_id=context.user_id,
             amount=payload.amount,
             effective_on=payload.effective_on,
+            timezone_name=context.timezone,
         )
     except ValueError as exc:
         raise InvalidFinanceError from exc
@@ -163,6 +165,7 @@ async def post_expense_update(
     try:
         transactions = await get_runtime(request).expenses.update(
             user_id=context.user_id,
+            timezone_name=context.timezone,
             transaction_id=transaction_id,
             changes=payload.to_changes(),
         )

@@ -20,7 +20,7 @@ class CreateExpensePayload(BaseModel):
     amount: Money
     entry_type: ExpenseEntryType = ExpenseEntryType.EXPENSE
     category: ExpenseCategory
-    transaction_date: date | None = None
+    transaction_date: date
     description: str = Field(min_length=1, max_length=500)
 
     model_config = ConfigDict(extra="forbid")
@@ -29,7 +29,7 @@ class CreateExpensePayload(BaseModel):
 class CreateInstallmentExpensePayload(BaseModel):
     total_amount: Money
     category: ExpenseCategory
-    transaction_date: date | None = None
+    transaction_date: date
     description: str = Field(min_length=1, max_length=500)
     installment_count: int = Field(ge=2, le=12)
 
@@ -128,7 +128,7 @@ class BudgetPayload(BaseModel):
 
 class FinanceCategoryPayload(BaseModel):
     category: BudgetCategory
-    actual_amount: Decimal
+    actual_amount: Decimal | None
     income_percentage: Decimal | None
     budget_percentage: Decimal | None
     budget_amount: Decimal | None

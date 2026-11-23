@@ -208,7 +208,7 @@ class ExpenseSummary:
 @dataclass(frozen=True, slots=True)
 class FinanceCategoryAnalysis:
     category: BudgetCategory
-    actual_amount: Decimal
+    actual_amount: Decimal | None
     income_percentage: Decimal | None
     budget_percentage: Decimal | None
     budget_amount: Decimal | None

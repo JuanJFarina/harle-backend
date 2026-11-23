@@ -177,6 +177,24 @@ def test_finance_mutations_require_origin_csrf_and_complete_budget(
     assert invalid_budget.json()["error"]["code"] == "validation_error"
 
 
+def test_web_expense_creation_requires_explicit_date(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    client.cookies.set("harle_session", "session-token")
+
+    response = client.post(
+        "/api/finances/expenses",
+        json={
+            "amount": "100.00",
+            "category": "home",
+            "description": "Home supplies",
+        },
+        headers={"Origin": "https://app.test", "X-CSRF-Token": "csrf-token"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+
+
 def test_legacy_google_sheets_user_cannot_access_internal_finances(
     monkeypatch,
 ) -> None:

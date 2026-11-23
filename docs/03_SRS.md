@@ -138,13 +138,13 @@ This document distinguishes the implemented controlled-beta baseline from target
 - **FR-37**: Harle shall add purchases in 2 to 12 installments, allocate currency fractions deterministically, use the selected date for the first installment, and use the first day of each following month thereafter.
 - **FR-38**: Commercial finance corrections shall use transaction UUIDs. Updating or permanently deleting an installment transaction shall affect its entire installment group while preserving the installment count on update.
 - **FR-39**: Harle shall support the current expense categories for rent, essential services, non-essential services, home, transport, outings, shopping, and other expenses.
-- **FR-40**: A transaction without an explicit date created from 00:00 through 04:59 in the user's local timezone shall use the previous calendar day, and Harle shall tell the user when this rule applies.
+- **FR-40**: A user-selected transaction date shall not be later than the user's current local date. Authenticated web creation shall require an explicit date. A transaction without an explicit date created through an assistant from 00:00 through 04:59 in the user's local timezone shall use the previous calendar day, and Harle shall tell the user when this rule applies. Automatically generated later installments may use future months.
 - **FR-41**: Finance tools shall validate amounts, dates, months, categories, refund flags, and installment counts before proposing or executing changes.
 - **FR-42**: Every internal finance operation shall filter by the requesting user's UUID. Legacy Google Sheets tools shall not modify cells outside the configured expense ranges.
 - **FR-43**: Commercial users shall receive internal expense tools. Only Juan's configured stable internal UUID shall receive, construct, or execute legacy Google Sheets expense tools.
 - **FR-43A**: Commercial users shall store positive net monthly ARS income as effective-dated history, and analysis shall use the latest entry not newer than the analyzed period cutoff.
 - **FR-43B**: Commercial users shall maintain one current budget assigning every expense category and savings a percentage whose total is exactly 100%.
-- **FR-43C**: Savings shall be a planned allocation rather than an expense transaction category. The system shall distinguish the savings target from income remaining after net expenses.
+- **FR-43C**: Savings shall not be an expense transaction category. Monthly analysis shall present remaining income after net expenses as actual savings against the configured savings allocation. Actual savings may exceed its target, fall below it, or become negative.
 - **FR-43D**: Monthly finance analysis shall expose gross expenses, refunds, net expenses, income and budget comparisons by category, remaining income, savings target, and a six-week trend.
 
 ### Productivity

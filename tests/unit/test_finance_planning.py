@@ -109,15 +109,27 @@ def test_income_history_uses_latest_entry_applicable_to_the_month() -> None:
             user_id=user_id,
             amount=Decimal("1000.00"),
             effective_on=date(2026, 10, 1),
+            timezone_name="UTC",
         )
         await service.save_income(
             user_id=user_id,
             amount=Decimal("1200.00"),
             effective_on=date(2026, 11, 1),
+            timezone_name="UTC",
         )
 
-        october = await service.analyze_month(user_id=user_id, year=2026, month=10)
-        november = await service.analyze_month(user_id=user_id, year=2026, month=11)
+        october = await service.analyze_month(
+            user_id=user_id,
+            year=2026,
+            month=10,
+            timezone_name="UTC",
+        )
+        november = await service.analyze_month(
+            user_id=user_id,
+            year=2026,
+            month=11,
+            timezone_name="UTC",
+        )
 
         assert october.income is not None
         assert october.income.amount == Decimal("1000.00")
@@ -135,6 +147,7 @@ def test_analysis_nets_refunds_and_compares_current_budget_to_income() -> None:
             user_id=user_id,
             amount=Decimal("1000.00"),
             effective_on=date(2026, 10, 1),
+            timezone_name="UTC",
         )
         percentages = {category: Decimal("0.00") for category in BudgetCategory}
         percentages[BudgetCategory.HOME] = Decimal("80.00")
@@ -160,6 +173,7 @@ def test_analysis_nets_refunds_and_compares_current_budget_to_income() -> None:
             user_id=user_id,
             year=2026,
             month=11,
+            timezone_name="UTC",
         )
         home = next(
             item
@@ -174,6 +188,14 @@ def test_analysis_nets_refunds_and_compares_current_budget_to_income() -> None:
         assert analysis.savings_target == Decimal("200.00")
         assert home.actual_amount == Decimal("80.00")
         assert home.income_percentage == Decimal("8.00")
+        savings = next(
+            item
+            for item in analysis.categories
+            if item.category is BudgetCategory.SAVINGS
+        )
+        assert savings.actual_amount == Decimal("920.00")
+        assert savings.budget_amount == Decimal("200.00")
+        assert savings.budget_used_percentage == Decimal("460.00")
 
     asyncio.run(verify())
 
@@ -186,6 +208,7 @@ def test_missing_income_and_budget_are_explicit() -> None:
             user_id=user_id,
             year=2026,
             month=11,
+            timezone_name="UTC",
         )
 
         assert analysis.income is None
@@ -193,6 +216,71 @@ def test_missing_income_and_budget_are_explicit() -> None:
         assert analysis.remaining_income is None
         assert analysis.savings_target is None
         assert all(item.budget_amount is None for item in analysis.categories)
+        savings = next(
+            item
+            for item in analysis.categories
+            if item.category is BudgetCategory.SAVINGS
+        )
+        assert savings.actual_amount is None
+
+    asyncio.run(verify())
+
+
+def test_current_month_cutoff_uses_user_local_date() -> None:
+    async def verify() -> None:
+        expenses = FakeExpenses()
+        service = FinancePlanningService(
+            expenses=expenses,  # type: ignore[arg-type]
+            incomes=FakeIncomes(),
+            budgets=FakeBudgets(),
+            clock=lambda: datetime(2026, 11, 24, 1, tzinfo=timezone.utc),
+        )
+        user_id = uuid4()
+        expense_service = ExpenseService(
+            expenses,  # type: ignore[arg-type]
+            clock=lambda: datetime(2026, 11, 24, 12, tzinfo=timezone.utc),
+        )
+        await expense_service.add_expense(
+            user_id=user_id,
+            timezone_name="UTC",
+            expense=CreateExpense(
+                amount=Decimal("100.00"),
+                category=ExpenseCategory.HOME,
+                description="Tomorrow locally",
+                transaction_date=date(2026, 11, 24),
+            ),
+        )
+
+        analysis = await service.analyze_month(
+            user_id=user_id,
+            year=2026,
+            month=11,
+            timezone_name="America/Argentina/Cordoba",
+        )
+
+        assert analysis.net_expenses == Decimal("0.00")
+        assert not analysis.transactions
+
+    asyncio.run(verify())
+
+
+def test_income_effective_date_uses_user_local_today() -> None:
+    async def verify() -> None:
+        service = FinancePlanningService(
+            expenses=FakeExpenses(),  # type: ignore[arg-type]
+            incomes=FakeIncomes(),
+            budgets=FakeBudgets(),
+            clock=lambda: datetime(2026, 11, 23, 12, tzinfo=timezone.utc),
+        )
+
+        entry = await service.save_income(
+            user_id=uuid4(),
+            amount=Decimal("1000.00"),
+            effective_on=date(2026, 11, 24),
+            timezone_name="Pacific/Kiritimati",
+        )
+
+        assert entry.effective_on == date(2026, 11, 24)
 
     asyncio.run(verify())
 

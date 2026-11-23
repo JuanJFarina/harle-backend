@@ -19,9 +19,9 @@
 - **Effective-dated monthly income**: Commercial users can store net monthly ARS income with an effective date; month analysis uses the latest entry applicable to that period and preserves earlier income history.
 - **Current 100% budget**: Commercial users can allocate exactly 100% of income across all fixed expense categories plus savings through Telegram or the authenticated web API.
 - **Finance planning analysis**: Monthly analysis compares net category spending with allocated amounts, reports income percentages, gross expenses, refunds, remaining income, a savings target, and six-week spending trends.
-- **Savings semantics**: Savings is a planned allocation rather than an expense category. Remaining income is reported separately and is never represented as confirmed savings.
+- **Savings semantics**: Savings is shown as remaining income against its configured budget. It may exceed the target, fall below it, or become negative as net spending changes.
 - **Expense policy**: Commercial expenses use Argentine pesos and fixed categories for rent, essential services, non-essential services, home, transport, outings, shopping, and other expenses.
-- **Expense date handling**: Transactions without an explicit date use the previous local day from 00:00 through 04:59, and Harle reports when this rule was applied.
+- **Expense date handling**: User-selected transaction dates cannot be later than the user's current local date. Web creation requires a date; assistant transactions without one use the previous local day from 00:00 through 04:59 and report when this rule was applied. Later installment records may fall in future months.
 - **Juan-only Google Sheets expenses**: Juan's stable internal UUID receives the existing private Google Sheets expense family instead of commercial PostgreSQL expenses.
 - **Internal events**: Every entitled user can list, create, update, disable, re-enable, and permanently delete private timed or all-day `user_event` and `system_event` records.
 - **Simple recurring events**: An event may repeat forever on a unique `week_days` list or `month_days` list while remaining one event record with no materialized occurrence rows.

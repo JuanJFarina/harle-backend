@@ -115,6 +115,7 @@ async def verify_expense_isolation(database_url: str) -> None:
         target_id = first.transactions[1].id
         denied = await service.update(
             user_id=second_id,
+            timezone_name="UTC",
             transaction_id=target_id,
             changes=ExpenseChanges(amount=Decimal("999.00")),
         )
@@ -122,6 +123,7 @@ async def verify_expense_isolation(database_url: str) -> None:
 
         updated = await service.update(
             user_id=first_id,
+            timezone_name="UTC",
             transaction_id=target_id,
             changes=ExpenseChanges(amount=Decimal("120.00")),
         )
