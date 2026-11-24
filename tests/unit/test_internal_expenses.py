@@ -158,7 +158,7 @@ def test_installment_update_and_deletion_apply_to_the_group() -> None:
             changes=ExpenseChanges(
                 amount=Decimal("120.00"),
                 category=ExpenseCategory.SHOPPING,
-                transaction_date=date(2026, 8, 20),
+                transaction_date=date(2026, 9, 1),
             ),
         )
 
@@ -168,13 +168,26 @@ def test_installment_update_and_deletion_apply_to_the_group() -> None:
             Decimal("40.00"),
         ]
         assert [transaction.transaction_date for transaction in updated] == [
-            date(2026, 8, 20),
+            date(2026, 8, 15),
             date(2026, 9, 1),
             date(2026, 10, 1),
         ]
         assert all(
             transaction.category is ExpenseCategory.SHOPPING for transaction in updated
         )
+
+        shifted = await service.update(
+            user_id=user_id,
+            timezone_name="America/Argentina/Cordoba",
+            transaction_id=target_id,
+            changes=ExpenseChanges(transaction_date=date(2026, 9, 6)),
+        )
+
+        assert [transaction.transaction_date for transaction in shifted] == [
+            date(2026, 8, 20),
+            date(2026, 9, 6),
+            date(2026, 10, 6),
+        ]
 
         deleted = await service.delete(
             user_id=user_id,

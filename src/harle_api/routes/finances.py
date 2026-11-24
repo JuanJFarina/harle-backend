@@ -47,6 +47,7 @@ async def get_finance_dashboard(
     request: Request,
     year: Annotated[int, Query(ge=1, le=9999)],
     month: Annotated[int, Query(ge=1, le=12)],
+    trend_days: Annotated[int, Query()] = 30,
 ) -> FinanceDashboardPayload:
     context = await _context(request)
     try:
@@ -55,6 +56,7 @@ async def get_finance_dashboard(
             year=year,
             month=month,
             timezone_name=context.timezone,
+            trend_days=trend_days,
         )
     except ValueError as exc:
         raise InvalidFinanceError from exc

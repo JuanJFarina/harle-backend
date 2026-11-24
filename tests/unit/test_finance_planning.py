@@ -24,6 +24,7 @@ NOW = datetime(2026, 11, 23, 12, tzinfo=timezone.utc)
 class FakeExpenses:
     def __init__(self) -> None:
         self.transactions: list[ExpenseTransaction] = []
+        self.requested_ranges: list[tuple[date, date]] = []
 
     async def create(
         self,
@@ -42,6 +43,7 @@ class FakeExpenses:
         start_date: date,
         end_date: date,
     ) -> Sequence[ExpenseTransaction]:
+        self.requested_ranges.append((start_date, end_date))
         return [
             item
             for item in self.transactions
@@ -260,6 +262,44 @@ def test_current_month_cutoff_uses_user_local_date() -> None:
 
         assert analysis.net_expenses == Decimal("0.00")
         assert not analysis.transactions
+
+    asyncio.run(verify())
+
+
+def test_trend_uses_the_requested_rolling_period() -> None:
+    async def verify() -> None:
+        service, expenses, user_id = _service()
+
+        thirty_days = await service.analyze_month(
+            user_id=user_id,
+            year=2026,
+            month=11,
+            timezone_name="UTC",
+            trend_days=30,
+        )
+        ninety_days = await service.analyze_month(
+            user_id=user_id,
+            year=2026,
+            month=11,
+            timezone_name="UTC",
+            trend_days=90,
+        )
+        year = await service.analyze_month(
+            user_id=user_id,
+            year=2026,
+            month=11,
+            timezone_name="UTC",
+            trend_days=365,
+        )
+
+        assert expenses.requested_ranges == [
+            (date(2026, 10, 25), date(2026, 11, 23)),
+            (date(2026, 8, 26), date(2026, 11, 23)),
+            (date(2025, 11, 24), date(2026, 11, 23)),
+        ]
+        assert len(thirty_days.trend) == 6
+        assert len(ninety_days.trend) == 14
+        assert len(year.trend) == 53
 
     asyncio.run(verify())
 

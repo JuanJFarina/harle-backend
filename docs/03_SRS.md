@@ -145,7 +145,7 @@ This document distinguishes the implemented controlled-beta baseline from target
 - **FR-43A**: Commercial users shall store positive net monthly ARS income as effective-dated history, and analysis shall use the latest entry not newer than the analyzed period cutoff.
 - **FR-43B**: Commercial users shall maintain one current budget assigning every expense category and savings a percentage whose total is exactly 100%.
 - **FR-43C**: Savings shall not be an expense transaction category. Monthly analysis shall present remaining income after net expenses as actual savings against the configured savings allocation. Actual savings may exceed its target, fall below it, or become negative.
-- **FR-43D**: Monthly finance analysis shall expose gross expenses, refunds, net expenses, income and budget comparisons by category, remaining income, savings target, and a six-week trend.
+- **FR-43D**: Monthly finance analysis shall expose gross expenses, refunds, net expenses, income and budget comparisons by category, remaining income, savings target, and a selectable 30-, 90-, or 365-day trend ending on the current local date for the current month or the selected month end for historical months.
 
 ### Productivity
 

@@ -23,6 +23,7 @@ from harle_domain.expenses import (
 
 CENT = Decimal("0.01")
 HUNDRED = Decimal("100")
+TREND_DAY_OPTIONS = frozenset({30, 90, 365})
 
 
 def utc_now() -> datetime:
@@ -98,9 +99,12 @@ class FinancePlanningService:
         year: int,
         month: int,
         timezone_name: str,
+        trend_days: int = 30,
     ) -> MonthlyFinanceAnalysis:
         # The analysis keeps named monetary intermediates to preserve its auditability.
         # pylint: disable=too-many-locals
+        if trend_days not in TREND_DAY_OPTIONS:
+            raise ValueError("Trend days must be 30, 90, or 365.")
         month_start = date(year, month, 1)
         next_month = (
             date(year + 1, 1, 1)
@@ -110,7 +114,7 @@ class FinancePlanningService:
         now_date = _local_date(self._now(), timezone_name)
         month_end = next_month - timedelta(days=1)
         cutoff = now_date if month_start <= now_date <= month_end else month_end
-        trend_start = cutoff - timedelta(days=41)
+        trend_start = cutoff - timedelta(days=trend_days - 1)
         query_start = min(month_start, trend_start)
         all_transactions = await self.expenses.list_for_range(
             user_id=user_id,

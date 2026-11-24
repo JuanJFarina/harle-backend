@@ -64,7 +64,9 @@ class FakeFinances:
             updated_at=NOW,
         )
 
-    async def analyze_month(self, **_: object) -> MonthlyFinanceAnalysis:
+    async def analyze_month(self, **values: object) -> MonthlyFinanceAnalysis:
+        if values["trend_days"] not in (30, 90, 365):
+            raise ValueError("Unsupported trend period.")
         return MonthlyFinanceAnalysis(
             year=2026,
             month=11,
@@ -136,6 +138,21 @@ def test_finance_dashboard_requires_session_and_returns_configuration(
         "category": "savings",
         "percentage": "100.00",
     }
+
+
+def test_finance_dashboard_accepts_only_supported_trend_periods(monkeypatch) -> None:
+    client = _client(monkeypatch)
+    client.cookies.set("harle_session", "session-token")
+
+    supported = client.get(
+        "/api/finances/dashboard?year=2026&month=11&trend_days=90",
+    )
+    unsupported = client.get(
+        "/api/finances/dashboard?year=2026&month=11&trend_days=60",
+    )
+
+    assert supported.status_code == 200
+    assert unsupported.status_code == 422
 
 
 def test_finance_mutations_require_origin_csrf_and_complete_budget(
