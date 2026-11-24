@@ -12,6 +12,8 @@ erDiagram
     HARLE_USER ||--o| ASSISTANT_PROFILE : configures
     HARLE_USER ||--o{ CONVERSATION : owns
     HARLE_USER ||--o{ EXPENSE_TRANSACTION : owns
+    HARLE_USER ||--o{ INCOME_HISTORY : owns
+    HARLE_USER ||--o| FINANCE_BUDGET_SETTINGS : configures
     HARLE_USER ||--o{ INTERNAL_EVENT : owns
     CONVERSATION o|--o{ TELEGRAM_UPDATE_CLAIM : completes
 
@@ -116,6 +118,31 @@ erDiagram
         TIMESTAMPTZ updated_at
     }
 
+    INCOME_HISTORY {
+        UUID id PK
+        UUID user_id FK
+        NUMERIC amount
+        CHAR currency
+        DATE effective_on
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    FINANCE_BUDGET_SETTINGS {
+        UUID user_id PK, FK
+        NUMERIC rent_percentage
+        NUMERIC essential_services_percentage
+        NUMERIC non_essential_services_percentage
+        NUMERIC home_percentage
+        NUMERIC transport_percentage
+        NUMERIC outings_percentage
+        NUMERIC shopping_percentage
+        NUMERIC other_percentage
+        NUMERIC savings_percentage
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
     INTERNAL_EVENT {
         UUID id PK
         UUID user_id FK
@@ -145,6 +172,8 @@ erDiagram
 | Harle user | Assistant profile | One to zero or one | The assistant persona is configured independently for each user. |
 | Harle user | Conversation | One to many | Conversation and tool-interaction rows are owned by one user. |
 | Harle user | Expense transaction | One to many | Commercial expense data is private to its owner. |
+| Harle user | Income history | One to many | Effective-dated net monthly ARS income preserves historical analysis. |
+| Harle user | Finance budget settings | One to zero or one | One current 100% allocation applies to all analyzed months. |
 | Harle user | Internal event | One to many | Every event query and mutation is owner-scoped. |
 | Conversation | Telegram update claim | Zero or one to many | One aggregated conversation may complete multiple Telegram updates. |
 
@@ -175,6 +204,9 @@ erDiagram
 - Categories are fixed to rent, essential services, non-essential services, home, transport, outings, shopping, and other.
 - Installment fields are all absent or all present. Counts range from 2 to 12, and installment numbers are unique within one user's group.
 - Expense deletion is permanent. Selecting one installment for update or deletion affects its complete group.
+- Income history contains positive monthly net ARS amounts. The latest entry whose effective date is not after the analysis cutoff applies.
+- Finance budget settings allocate every fixed expense category plus savings. Every percentage is between 0 and 100 and their sum is exactly 100.
+- Savings is not an expense category. Monthly analysis presents remaining income after net expenses as actual savings against the configured savings allocation; the value may exceed its target or become negative.
 
 ### Internal Events
 
@@ -193,6 +225,7 @@ erDiagram
 - Conversations are indexed by user, chat, creation time, kind, status, and monthly quota range.
 - Delivered conversation update IDs and update-plus-tool-interaction identifiers are unique when present.
 - Expenses are indexed by user and transaction date, category, and installment group.
+- Income history is indexed by user and descending effective date. One user has at most one entry per effective date.
 - Events are indexed by user, status, and start time, with partial indexes for active one-time notifications and active recurrence definitions.
 - Telegram claims use `update_id` as the primary deduplication key and are indexed by status and update time.
 - User-owned entities cascade when their owning user is physically deleted, subject to the future retention and deletion policy.

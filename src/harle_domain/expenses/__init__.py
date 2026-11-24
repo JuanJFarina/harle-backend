@@ -1,5 +1,7 @@
 from .models import (
     ARS_CURRENCY,
+    BudgetAllocation,
+    BudgetCategory,
     ExpenseCategory,
     ExpenseCategoryTotal,
     ExpenseDetails,
@@ -8,8 +10,13 @@ from .models import (
     ExpenseSummary,
     ExpenseTimestamps,
     ExpenseTransaction,
+    FinanceBudgetSettings,
+    FinanceCategoryAnalysis,
+    FinanceTrendPoint,
+    IncomeHistoryEntry,
+    MonthlyFinanceAnalysis,
 )
-from .ports import ExpenseRepository
+from .ports import ExpenseRepository, FinanceBudgetRepository, IncomeHistoryRepository
 from .rules import (
     ResolvedTransactionDate,
     installment_dates,
@@ -20,6 +27,8 @@ from .rules import (
 
 __all__ = [
     "ARS_CURRENCY",
+    "BudgetAllocation",
+    "BudgetCategory",
     "ExpenseCategory",
     "ExpenseCategoryTotal",
     "ExpenseDetails",
@@ -29,6 +38,13 @@ __all__ = [
     "ExpenseSummary",
     "ExpenseTimestamps",
     "ExpenseTransaction",
+    "FinanceBudgetRepository",
+    "FinanceBudgetSettings",
+    "FinanceCategoryAnalysis",
+    "FinanceTrendPoint",
+    "IncomeHistoryEntry",
+    "IncomeHistoryRepository",
+    "MonthlyFinanceAnalysis",
     "ResolvedTransactionDate",
     "installment_dates",
     "resolve_transaction_date",

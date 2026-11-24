@@ -185,6 +185,7 @@ class ExpenseService:
         self,
         *,
         user_id: UUID,
+        timezone_name: str,
         transaction_id: UUID,
         changes: ExpenseChanges,
     ) -> Sequence[ExpenseTransaction]:
@@ -199,7 +200,23 @@ class ExpenseService:
             related,
             key=lambda transaction: transaction.installment_number or 1,
         )
-        replacements = _apply_changes(ordered, changes, now)
+        selected = next(
+            transaction for transaction in ordered if transaction.id == transaction_id
+        )
+        if changes.transaction_date is not None:
+            date_shift = changes.transaction_date - selected.transaction_date
+            first_date = ordered[0].transaction_date + date_shift
+            resolve_transaction_date(
+                current_time=now,
+                timezone_name=timezone_name,
+                requested_date=first_date,
+            )
+        replacements = _apply_changes(
+            ordered,
+            changes,
+            now,
+            selected_transaction=selected,
+        )
         return await self.repository.update_related(
             user_id=user_id,
             transaction_id=transaction_id,
@@ -255,6 +272,8 @@ def _apply_changes(
     transactions: Sequence[ExpenseTransaction],
     changes: ExpenseChanges,
     now: datetime,
+    *,
+    selected_transaction: ExpenseTransaction,
 ) -> Sequence[ExpenseTransaction]:
     first = transactions[0]
     count = first.installment_count
@@ -262,7 +281,11 @@ def _apply_changes(
     if count is not None and entry_type is ExpenseEntryType.REFUND:
         raise ValueError("An installment purchase cannot become a refund.")
     amounts = _updated_amounts(transactions, changes.amount)
-    dates = _updated_dates(transactions, changes.transaction_date)
+    dates = _updated_dates(
+        transactions,
+        changes.transaction_date,
+        selected_transaction=selected_transaction,
+    )
     return [
         replace(
             transaction,
@@ -306,11 +329,14 @@ def _updated_amounts(
 
 def _updated_dates(
     transactions: Sequence[ExpenseTransaction],
-    first_date: date | None,
+    requested_date: date | None,
+    *,
+    selected_transaction: ExpenseTransaction,
 ) -> Sequence[date]:
-    if first_date is None:
+    if requested_date is None:
         return [transaction.transaction_date for transaction in transactions]
     installment_count = transactions[0].installment_count
     if installment_count is None:
-        return [first_date]
-    return installment_dates(first_date, installment_count)
+        return [requested_date]
+    date_shift = requested_date - selected_transaction.transaction_date
+    return [transaction.transaction_date + date_shift for transaction in transactions]

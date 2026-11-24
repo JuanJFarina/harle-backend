@@ -25,6 +25,76 @@ class ExpenseCategory(str, Enum):
     OTHER = "other"
 
 
+class BudgetCategory(str, Enum):
+    RENT = "rent"
+    ESSENTIAL_SERVICES = "essential_services"
+    NON_ESSENTIAL_SERVICES = "non_essential_services"
+    HOME = "home"
+    TRANSPORT = "transport"
+    OUTINGS = "outings"
+    SHOPPING = "shopping"
+    OTHER = "other"
+    SAVINGS = "savings"
+
+
+@dataclass(frozen=True, slots=True)
+class IncomeHistoryEntry:
+    id: UUID
+    user_id: UUID
+    amount: Decimal
+    currency: str
+    effective_on: date
+    created_at: datetime
+    updated_at: datetime
+
+    def __post_init__(self) -> None:
+        _validate_amount(self.amount)
+        if self.currency != ARS_CURRENCY:
+            raise ValueError("Income history supports only ARS.")
+
+
+@dataclass(frozen=True, slots=True)
+class BudgetAllocation:
+    category: BudgetCategory
+    percentage: Decimal
+
+    def __post_init__(self) -> None:
+        if (
+            not self.percentage.is_finite()
+            or self.percentage < 0
+            or self.percentage > 100
+            or self.percentage.quantize(CENT) != self.percentage
+        ):
+            raise ValueError("Budget percentages must be between 0 and 100.")
+
+
+@dataclass(frozen=True, slots=True)
+class FinanceBudgetSettings:
+    user_id: UUID
+    allocations: Sequence[BudgetAllocation]
+    created_at: datetime
+    updated_at: datetime
+
+    def __post_init__(self) -> None:
+        categories = [allocation.category for allocation in self.allocations]
+        if len(categories) != len(set(categories)):
+            raise ValueError("Budget categories must be unique.")
+        if set(categories) != set(BudgetCategory):
+            raise ValueError("Every budget category must have an allocation.")
+        total = sum(
+            (allocation.percentage for allocation in self.allocations),
+            Decimal("0.00"),
+        )
+        if total != Decimal("100.00"):
+            raise ValueError("Budget percentages must total exactly 100.")
+
+    def percentage_for(self, category: BudgetCategory) -> Decimal:
+        for allocation in self.allocations:
+            if allocation.category is category:
+                return allocation.percentage
+        raise ValueError(f"Missing budget allocation for {category.value}.")
+
+
 @dataclass(frozen=True, slots=True)
 class ExpenseDetails:
     entry_type: ExpenseEntryType
@@ -133,6 +203,38 @@ class ExpenseSummary:
     month: int
     category_totals: Sequence[ExpenseCategoryTotal]
     total: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class FinanceCategoryAnalysis:
+    category: BudgetCategory
+    actual_amount: Decimal | None
+    income_percentage: Decimal | None
+    budget_percentage: Decimal | None
+    budget_amount: Decimal | None
+    budget_used_percentage: Decimal | None
+
+
+@dataclass(frozen=True, slots=True)
+class FinanceTrendPoint:
+    week_starts_on: date
+    net_spent: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class MonthlyFinanceAnalysis:
+    year: int
+    month: int
+    income: IncomeHistoryEntry | None
+    budget: FinanceBudgetSettings | None
+    gross_expenses: Decimal
+    gross_refunds: Decimal
+    net_expenses: Decimal
+    remaining_income: Decimal | None
+    savings_target: Decimal | None
+    categories: Sequence[FinanceCategoryAnalysis]
+    trend: Sequence[FinanceTrendPoint]
+    transactions: Sequence[ExpenseTransaction]
 
 
 def _validate_amount(amount: Decimal) -> None:

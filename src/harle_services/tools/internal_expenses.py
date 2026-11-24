@@ -1,17 +1,22 @@
 from collections.abc import Mapping, Sequence
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Annotated, TypeVar
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from harle_domain.expenses import (
     ARS_CURRENCY,
+    BudgetCategory,
     ExpenseCategory,
     ExpenseEntryType,
     ExpenseSummary,
     ExpenseTransaction,
+    FinanceBudgetSettings,
+    IncomeHistoryEntry,
+    MonthlyFinanceAnalysis,
 )
 from harle_domain.tools import (
     ToolCallResult,
@@ -26,6 +31,7 @@ from harle_services.expenses import (
     CreateInstallmentExpense,
     ExpenseChanges,
     ExpenseService,
+    FinancePlanningService,
 )
 
 from .registry import ToolFamilyRegistration, ToolHandlerFactory
@@ -108,12 +114,55 @@ class DeleteExpenseArgs(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class SetMonthlyIncomeArgs(BaseModel):
+    amount: Money
+    effective_on: date | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class SetBudgetArgs(BaseModel):
+    rent: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+    essential_services: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+    non_essential_services: Annotated[
+        Decimal,
+        Field(ge=0, le=100, decimal_places=2),
+    ]
+    home: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+    transport: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+    outings: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+    shopping: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+    other: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+    savings: Annotated[Decimal, Field(ge=0, le=100, decimal_places=2)]
+
+    model_config = ConfigDict(extra="forbid")
+
+    @model_validator(mode="after")
+    def require_total(self) -> "SetBudgetArgs":
+        if sum(self.percentages().values(), Decimal("0.00")) != Decimal("100.00"):
+            raise ValueError("Budget percentages must total exactly 100.")
+        return self
+
+    def percentages(self) -> dict[BudgetCategory, Decimal]:
+        return {category: getattr(self, category.value) for category in BudgetCategory}
+
+
+class MonthlyFinanceSummaryArgs(BaseModel):
+    year: YearNumber
+    month: MonthNumber
+
+    model_config = ConfigDict(extra="forbid")
+
+
 FAMILY = ToolFamily.INTERNAL_EXPENSES
 
 SHARED_INSTRUCTIONS = """For every internal expense tool:
 - Amounts are Argentine pesos and categories are rent, essential_services, non_essential_services, home, transport, outings, shopping, or other.
+- Never accept a user-selected expense date after the user's current local date. Automatically generated later installments may fall in future months.
 - When no date is supplied, transactions from 00:00 through 04:59 use the previous local day; tell the user when used_previous_day_rule is true.
 - Read results include transaction UUIDs. Updating or deleting an installment UUID affects its entire installment group.
+- Income history is effective-dated. Budgets are current settings and always allocate exactly 100%, including savings.
+- Savings is not an expense category. Report remaining income after net expenses as actual savings against its configured budget; it may exceed the target or become negative.
 - Deletion is permanent. Never expose or request external spreadsheet details."""
 
 DEFINITIONS = (
@@ -184,9 +233,50 @@ DEFINITIONS = (
     ),
 )
 
+PLANNING_DEFINITIONS = (
+    ToolDefinition(
+        name="get_finance_settings",
+        family=FAMILY,
+        description="Read the user's income history and current budget allocation.",
+        argument_model=MonthlyFinanceSummaryArgs,
+        effect=ToolEffect.READ,
+        can_run_concurrently=True,
+    ),
+    ToolDefinition(
+        name="set_monthly_income",
+        family=FAMILY,
+        description="Save monthly net ARS income effective on a date.",
+        argument_model=SetMonthlyIncomeArgs,
+        effect=ToolEffect.MODIFY,
+        can_run_concurrently=False,
+    ),
+    ToolDefinition(
+        name="set_finance_budget",
+        family=FAMILY,
+        description=(
+            "Replace all expense-category and savings percentages; they must total 100."
+        ),
+        argument_model=SetBudgetArgs,
+        effect=ToolEffect.MODIFY,
+        can_run_concurrently=False,
+    ),
+    ToolDefinition(
+        name="get_monthly_finance_summary",
+        family=FAMILY,
+        description=(
+            "Analyze income, net spending, category budgets, remaining income, "
+            "and savings target for one month."
+        ),
+        argument_model=MonthlyFinanceSummaryArgs,
+        effect=ToolEffect.READ,
+        can_run_concurrently=True,
+    ),
+)
+
 
 def create_internal_expenses_registration(
     service: ExpenseService,
+    planning: FinancePlanningService | None = None,
 ) -> ToolFamilyRegistration:
     def build_handlers(
         context: ToolExecutionContext,
@@ -288,6 +378,7 @@ def create_internal_expenses_registration(
             validated = _require_model(args, UpdateExpenseArgs)
             transactions = await service.update(
                 user_id=context.user_id,
+                timezone_name=context.timezone,
                 transaction_id=validated.transaction_id,
                 changes=validated.to_changes(),
             )
@@ -308,7 +399,7 @@ def create_internal_expenses_registration(
                 result=_mutation_payload(transactions, "deleted"),
             )
 
-        return {
+        handlers: dict[str, ToolHandler] = {
             "add_expense": add_expense,
             "add_refund": add_refund,
             "add_installment_expense": add_installments,
@@ -317,17 +408,97 @@ def create_internal_expenses_registration(
             "update_expense": update,
             "delete_expense": delete,
         }
+        if planning is None:
+            return handlers
 
-    return _internal_registration(build_handlers)
+        async def get_settings(args: BaseModel) -> ToolCallResult:
+            context.require_family(FAMILY)
+            validated = _require_model(args, MonthlyFinanceSummaryArgs)
+            analysis = await planning.analyze_month(
+                user_id=context.user_id,
+                year=validated.year,
+                month=validated.month,
+                timezone_name=context.timezone,
+            )
+            history = await planning.income_history(user_id=context.user_id)
+            return ToolCallResult(
+                called_tool_name="get_finance_settings",
+                result={
+                    "ok": True,
+                    "income": _income_payload(analysis.income),
+                    "income_history": [_income_payload(item) for item in history],
+                    "budget": _budget_payload(analysis.budget),
+                },
+            )
+
+        async def set_income(args: BaseModel) -> ToolCallResult:
+            context.require_family(FAMILY)
+            validated = _require_model(args, SetMonthlyIncomeArgs)
+            effective_on = (
+                validated.effective_on
+                or datetime.now(
+                    ZoneInfo(context.timezone),
+                ).date()
+            )
+            income = await planning.save_income(
+                user_id=context.user_id,
+                amount=validated.amount,
+                effective_on=effective_on,
+                timezone_name=context.timezone,
+            )
+            return ToolCallResult(
+                called_tool_name="set_monthly_income",
+                result={"ok": True, "income": _income_payload(income)},
+            )
+
+        async def set_budget(args: BaseModel) -> ToolCallResult:
+            context.require_family(FAMILY)
+            validated = _require_model(args, SetBudgetArgs)
+            budget = await planning.save_budget(
+                user_id=context.user_id,
+                percentages=validated.percentages(),
+            )
+            return ToolCallResult(
+                called_tool_name="set_finance_budget",
+                result={"ok": True, "budget": _budget_payload(budget)},
+            )
+
+        async def finance_summary(args: BaseModel) -> ToolCallResult:
+            context.require_family(FAMILY)
+            validated = _require_model(args, MonthlyFinanceSummaryArgs)
+            analysis = await planning.analyze_month(
+                user_id=context.user_id,
+                year=validated.year,
+                month=validated.month,
+                timezone_name=context.timezone,
+            )
+            return ToolCallResult(
+                called_tool_name="get_monthly_finance_summary",
+                result=_finance_analysis_payload(analysis),
+            )
+
+        handlers.update(
+            {
+                "get_finance_settings": get_settings,
+                "set_monthly_income": set_income,
+                "set_finance_budget": set_budget,
+                "get_monthly_finance_summary": finance_summary,
+            },
+        )
+        return handlers
+
+    definitions = DEFINITIONS + (PLANNING_DEFINITIONS if planning is not None else ())
+    return _internal_registration(build_handlers, definitions)
 
 
 def _internal_registration(
     handler_factory: ToolHandlerFactory,
+    definitions: Sequence[ToolDefinition],
 ) -> ToolFamilyRegistration:
     return ToolFamilyRegistration(
         family=FAMILY,
         instructions=SHARED_INSTRUCTIONS,
-        definitions=DEFINITIONS,
+        definitions=definitions,
         handler_factory=handler_factory,
     )
 
@@ -410,6 +581,86 @@ def _summary_payload(summary: ExpenseSummary) -> Mapping[str, object]:
             for category_total in summary.category_totals
         ],
         "total": str(summary.total),
+    }
+
+
+def _income_payload(
+    income: IncomeHistoryEntry | None,
+) -> Mapping[str, object] | None:
+    if income is None:
+        return None
+    return {
+        "income_id": str(income.id),
+        "amount": str(income.amount),
+        "currency": income.currency,
+        "effective_on": income.effective_on.isoformat(),
+    }
+
+
+def _budget_payload(
+    budget: FinanceBudgetSettings | None,
+) -> Mapping[str, object] | None:
+    if budget is None:
+        return None
+    return {
+        allocation.category.value: str(allocation.percentage)
+        for allocation in budget.allocations
+    }
+
+
+def _finance_analysis_payload(
+    analysis: MonthlyFinanceAnalysis,
+) -> Mapping[str, object]:
+    return {
+        "ok": True,
+        "year": analysis.year,
+        "month": analysis.month,
+        "income": _income_payload(analysis.income),
+        "budget": _budget_payload(analysis.budget),
+        "gross_expenses": str(analysis.gross_expenses),
+        "gross_refunds": str(analysis.gross_refunds),
+        "net_expenses": str(analysis.net_expenses),
+        "remaining_income": (
+            str(analysis.remaining_income)
+            if analysis.remaining_income is not None
+            else None
+        ),
+        "savings_target": (
+            str(analysis.savings_target)
+            if analysis.savings_target is not None
+            else None
+        ),
+        "categories": [
+            {
+                "category": category.category.value,
+                "actual_amount": (
+                    str(category.actual_amount)
+                    if category.actual_amount is not None
+                    else None
+                ),
+                "income_percentage": (
+                    str(category.income_percentage)
+                    if category.income_percentage is not None
+                    else None
+                ),
+                "budget_percentage": (
+                    str(category.budget_percentage)
+                    if category.budget_percentage is not None
+                    else None
+                ),
+                "budget_amount": (
+                    str(category.budget_amount)
+                    if category.budget_amount is not None
+                    else None
+                ),
+                "budget_used_percentage": (
+                    str(category.budget_used_percentage)
+                    if category.budget_used_percentage is not None
+                    else None
+                ),
+            }
+            for category in analysis.categories
+        ],
     }
 
 

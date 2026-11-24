@@ -14,6 +14,10 @@ from harle_infrastructure.postgres.repositories.events import PostgresEventRepos
 from harle_infrastructure.postgres.repositories.expenses import (
     PostgresExpenseRepository,
 )
+from harle_infrastructure.postgres.repositories.finance_planning import (
+    PostgresFinanceBudgetRepository,
+    PostgresIncomeHistoryRepository,
+)
 from harle_infrastructure.postgres.repositories.interaction_events import (
     PostgresInteractionEventRepository,
 )
@@ -49,6 +53,8 @@ __all__ = [
     "PostgresInteractionEventRepository",
     "PostgresPaymentSubscriptionRepository",
     "PostgresExpenseRepository",
+    "PostgresFinanceBudgetRepository",
+    "PostgresIncomeHistoryRepository",
     "PostgresBrowserSessionRepository",
     "PostgresTelegramLinkRepository",
     "PostgresTelegramUpdateRepository",

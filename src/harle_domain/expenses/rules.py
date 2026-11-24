@@ -26,8 +26,6 @@ def resolve_transaction_date(
     timezone_name: str,
     requested_date: date | None,
 ) -> ResolvedTransactionDate:
-    if requested_date is not None:
-        return ResolvedTransactionDate(requested_date, False)
     if current_time.tzinfo is None or current_time.utcoffset() is None:
         raise ValueError("Current time must include a timezone.")
     try:
@@ -35,6 +33,10 @@ def resolve_transaction_date(
     except ZoneInfoNotFoundError as exc:
         raise ValueError(f"Unknown IANA timezone: {timezone_name}.") from exc
     local_time = current_time.astimezone(timezone)
+    if requested_date is not None:
+        if requested_date > local_time.date():
+            raise ValueError("Expense date cannot be in the future.")
+        return ResolvedTransactionDate(requested_date, False)
     use_previous_day = local_time.hour <= 4
     transaction_date = local_time.date()
     if use_previous_day:

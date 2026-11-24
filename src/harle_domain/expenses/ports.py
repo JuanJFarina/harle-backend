@@ -3,7 +3,7 @@ from datetime import date
 from typing import Protocol, runtime_checkable
 from uuid import UUID
 
-from .models import ExpenseTransaction
+from .models import ExpenseTransaction, FinanceBudgetSettings, IncomeHistoryEntry
 
 
 @runtime_checkable
@@ -51,3 +51,42 @@ class ExpenseRepository(Protocol):
         user_id: UUID,
         transaction_id: UUID,
     ) -> Sequence[ExpenseTransaction]: ...
+
+
+@runtime_checkable
+class IncomeHistoryRepository(Protocol):
+    async def get_effective(
+        self,
+        *,
+        user_id: UUID,
+        effective_on_or_before: date,
+    ) -> IncomeHistoryEntry | None: ...
+
+    async def list(
+        self,
+        *,
+        user_id: UUID,
+    ) -> Sequence[IncomeHistoryEntry]: ...
+
+    async def save(
+        self,
+        *,
+        user_id: UUID,
+        entry: IncomeHistoryEntry,
+    ) -> IncomeHistoryEntry: ...
+
+
+@runtime_checkable
+class FinanceBudgetRepository(Protocol):
+    async def get(
+        self,
+        *,
+        user_id: UUID,
+    ) -> FinanceBudgetSettings | None: ...
+
+    async def save(
+        self,
+        *,
+        user_id: UUID,
+        settings: FinanceBudgetSettings,
+    ) -> FinanceBudgetSettings: ...

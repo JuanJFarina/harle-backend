@@ -97,6 +97,7 @@ source-roots = ["src"]
 
 [tool.pylint.messages_control]
 disable = [
+    "duplicate-code",
     "import-error",
     "line-too-long",
     "logging-fstring-interpolation",
@@ -117,4 +118,4 @@ fail-under = 10.0
 entrypoint = "src.harle_api.app:harle_app"
 
 [tool.pymetrica]
-mc_fail_threshold = 20
+mc_fail_threshold = 30

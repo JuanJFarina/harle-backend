@@ -144,7 +144,7 @@ def test_installment_update_and_deletion_apply_to_the_group() -> None:
                     amount=Decimal("100.00"),
                     category=ExpenseCategory.HOME,
                     description="Washing machine",
-                    transaction_date=date(2026, 9, 15),
+                    transaction_date=date(2026, 8, 15),
                 ),
                 installment_count=3,
             ),
@@ -153,11 +153,12 @@ def test_installment_update_and_deletion_apply_to_the_group() -> None:
 
         updated = await service.update(
             user_id=user_id,
+            timezone_name="America/Argentina/Cordoba",
             transaction_id=target_id,
             changes=ExpenseChanges(
                 amount=Decimal("120.00"),
                 category=ExpenseCategory.SHOPPING,
-                transaction_date=date(2026, 10, 20),
+                transaction_date=date(2026, 9, 1),
             ),
         )
 
@@ -167,13 +168,26 @@ def test_installment_update_and_deletion_apply_to_the_group() -> None:
             Decimal("40.00"),
         ]
         assert [transaction.transaction_date for transaction in updated] == [
-            date(2026, 10, 20),
-            date(2026, 11, 1),
-            date(2026, 12, 1),
+            date(2026, 8, 15),
+            date(2026, 9, 1),
+            date(2026, 10, 1),
         ]
         assert all(
             transaction.category is ExpenseCategory.SHOPPING for transaction in updated
         )
+
+        shifted = await service.update(
+            user_id=user_id,
+            timezone_name="America/Argentina/Cordoba",
+            transaction_id=target_id,
+            changes=ExpenseChanges(transaction_date=date(2026, 9, 6)),
+        )
+
+        assert [transaction.transaction_date for transaction in shifted] == [
+            date(2026, 8, 20),
+            date(2026, 9, 6),
+            date(2026, 10, 6),
+        ]
 
         deleted = await service.delete(
             user_id=user_id,
@@ -181,6 +195,33 @@ def test_installment_update_and_deletion_apply_to_the_group() -> None:
         )
         assert len(deleted) == 3
         assert not repository.transactions
+
+    asyncio.run(verify())
+
+
+def test_user_selected_future_expense_dates_are_rejected() -> None:
+    async def verify() -> None:
+        service = ExpenseService(FakeExpenseRepository(), clock=lambda: NOW)
+        user_id = uuid4()
+
+        try:
+            await service.add_installments(
+                user_id=user_id,
+                timezone_name="America/Argentina/Cordoba",
+                purchase=CreateInstallmentExpense(
+                    expense=CreateExpense(
+                        amount=Decimal("100.00"),
+                        category=ExpenseCategory.HOME,
+                        description="Future purchase",
+                        transaction_date=date(2026, 9, 1),
+                    ),
+                    installment_count=3,
+                ),
+            )
+        except ValueError as exc:
+            assert str(exc) == "Expense date cannot be in the future."
+        else:
+            raise AssertionError("Expected a future expense date to be rejected.")
 
     asyncio.run(verify())
 
